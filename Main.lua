@@ -1,4 +1,4 @@
---// Hub Blox Fruits Sea 3 - Remoto (MainV2.lua)
+--// Hub Blox Fruits Sea 3 - Auto Farm 100% Otimizado (Main.lua)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
@@ -16,6 +16,7 @@ player.CharacterAdded:Connect(function(charNovo)
 	rootPart = charNovo:WaitForChild("HumanoidRootPart")
 end)
 
+--// Prevenção contra desconexão por AFK
 player.Idled:Connect(function()
 	VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 	task.wait(1)
@@ -26,7 +27,7 @@ local autoFarmAtivo = false
 local noclipAtivo = false
 local hubVisivel = true
 
---// Tabela de Missões do Sea 3
+--// Tabela Completa de Missões do Sea 3
 local missoesSea3 = {
 	{levelMin = 2450, questName = "PiratePortQuest", levelReq = 2450, npcName = "Pirate Port Quest Giver", enemyName = "Pirate Millionaire"},
 	{levelMin = 2400, questName = "HauntedQuest2", levelReq = 2400, npcName = "Haunted Quest Giver 2", enemyName = "Demonic Soul"},
@@ -44,8 +45,10 @@ local missoesSea3 = {
 }
 
 local function obterLevelAtual()
-	local dataFolder = player:FindFirstChild("Data")
-	return dataFolder and dataFolder:FindFirstChild("Level") and dataFolder.Level.Value or 1900
+	local success, level = pcall(function()
+		return player.Data.Level.Value
+	end)
+	return success and level or 1900
 end
 
 local function obterMissaoAtual()
@@ -58,7 +61,7 @@ local function obterMissaoAtual()
 	return missoesSea3[#missoesSea3]
 end
 
---// Interface Gráfica (Hub)
+--// Interface Gráfica Otimizada (Hub)
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BloxFruitsSea3Hub"
 screenGui.ResetOnSpawn = false
@@ -168,8 +171,9 @@ local function criarBotao(nomeTexto, posicaoY, callback)
 	end)
 end
 
+--// Sistema de Noclip Seguro
 RunService.Stepped:Connect(function()
-	if (autoFarmAtivo or noclipAtivo) and character then
+	if (autoFarmAtivo or noclipAtivo) and character and character:FindFirstChild("HumanoidRootPart") then
 		for _, parte in ipairs(character:GetDescendants()) do
 			if parte:IsA("BasePart") then
 				parte.CanCollide = false
@@ -178,11 +182,12 @@ RunService.Stepped:Connect(function()
 	end
 end)
 
+--// Voo Suave Seguro por Tween
 local function voarAte(destinoCFrame)
 	if not rootPart then return end
 	local distancia = (rootPart.Position - destinoCFrame.Position).Magnitude
-	local tempo = distancia / 300 
-	if tempo < 0.5 then tempo = 0.5 end
+	local tempo = distancia / 350
+	if tempo < 0.3 then tempo = 0.3 end
 
 	local infoTween = TweenInfo.new(tempo, Enum.EasingStyle.Linear)
 	local tween = TweenService:Create(rootPart, infoTween, {CFrame = destinoCFrame})
@@ -200,11 +205,12 @@ local function voarAte(destinoCFrame)
 	if conn then conn:Disconnect() end
 end
 
+--// Funções de Ação do Jogo
 local function pegarMissao(questName, levelReq)
-	local comms = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes") and game:GetService("ReplicatedStorage").Remotes:FindFirstChild("CommF_")
-	if comms then
+	pcall(function()
+		local comms = game:GetService("ReplicatedStorage").Remotes.CommF_
 		comms:InvokeServer("StartQuest", questName, levelReq)
-	end
+	end)
 end
 
 local function buscarInimigo(nomeInimigo)
@@ -222,49 +228,59 @@ local function buscarInimigo(nomeInimigo)
 end
 
 local function atacar()
-	VirtualUser:Button1Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+	pcall(function()
+		VirtualUser:Button1Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+	end)
 end
 
+--// Loop Principal de Automação Blindado contra Erros
 task.spawn(function()
 	while true do
 		task.wait(0.2)
 		if autoFarmAtivo and character and rootPart then
-			local missaoAtual = obterMissaoAtual()
-			local levelAtual = obterLevelAtual()
-			
-			statusLabel.Text = string.format("Lvl: %d | Alvo: %s", levelAtual, missaoAtual.enemyName)
-			
-			local temMissao = player.PlayerGui:FindFirstChild("Main") 
-				and player.PlayerGui.Main:FindFirstChild("Quest") 
-				and player.PlayerGui.Main.Quest.Visible
+			local success, err = pcall(function()
+				local missaoAtual = obterMissaoAtual()
+				local levelAtual = obterLevelAtual()
+				
+				statusLabel.Text = string.format("Lvl: %d | Alvo: %s", levelAtual, missaoAtual.enemyName)
+				
+				local mainGui = player.PlayerGui:FindFirstChild("Main")
+				local temMissao = mainGui and mainGui:FindFirstChild("Quest") and mainGui.Quest.Visible
 
-			if not temMissao then
-				statusLabel.Text = string.format("Voando para Quest: %s", missaoAtual.enemyName)
-				local npc = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild(missaoAtual.npcName)
-				if npc and npc:FindFirstChild("HumanoidRootPart") then
-					voarAte(npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3))
-					task.wait(0.3)
-					pegarMissao(missaoAtual.questName, missaoAtual.levelReq)
-					task.wait(0.5)
-				end
-			else
-				local alvo = buscarInimigo(missaoAtual.enemyName)
-				if alvo then
-					local mobRoot = alvo.HumanoidRootPart
-					local mobHumanoid = alvo.Humanoid
-
-					statusLabel.Text = string.format("Voando até o mob: %s", missaoAtual.enemyName)
-					voarAte(mobRoot.CFrame * CFrame.new(0, 8, 0))
-
-					statusLabel.Text = string.format("Farmando: %s", missaoAtual.enemyName)
-					while autoFarmAtivo and mobHumanoid.Health > 0 and alvo.Parent do
-						rootPart.CFrame = mobRoot.CFrame * CFrame.new(0, 8, 0) * CFrame.Angles(math.rad(-90), 0, 0)
-						atacar()
-						task.wait(0.1)
+				if not temMissao then
+					statusLabel.Text = string.format("Buscando Quest: %s", missaoAtual.enemyName)
+					local npc = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild(missaoAtual.npcName)
+					if npc and npc:FindFirstChild("HumanoidRootPart") then
+						voarAte(npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3))
+						task.wait(0.4)
+						pegarMissao(missaoAtual.questName, missaoAtual.levelReq)
+						task.wait(0.6)
 					end
 				else
-					statusLabel.Text = string.format("Procurando mob: %s...", missaoAtual.enemyName)
+					local alvo = buscarInimigo(missaoAtual.enemyName)
+					if alvo then
+						local mobRoot = alvo.HumanoidRootPart
+						local mobHumanoid = alvo.Humanoid
+
+						statusLabel.Text = string.format("Atacando: %s", missaoAtual.enemyName)
+						voarAte(mobRoot.CFrame * CFrame.new(0, 8, 0))
+
+						while autoFarmAtivo and mobHumanoid and mobHumanoid.Health > 0 and alvo.Parent do
+							if rootPart and mobRoot then
+								rootPart.CFrame = mobRoot.CFrame * CFrame.new(0, 8, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+								atacar()
+							end
+							task.wait(0.1)
+						end
+					else
+						statusLabel.Text = string.format("Aguardando Spawn: %s", missaoAtual.enemyName)
+					end
 				end
+			end)
+			
+			if not success then
+				-- Se ocorrer qualquer imprevisto, o script apenas aguarda e tenta novamente sem travar
+				task.wait(1)
 			end
 		else
 			if not autoFarmAtivo then
@@ -274,7 +290,8 @@ task.spawn(function()
 	end
 end)
 
-criarBotao("Auto Farm (Sea 3 Safe Fly)", 90, function(estado)
+--// Registro dos Botões
+criarBotao("Auto Farm (Sea 3 Safe)", 90, function(estado)
 	autoFarmAtivo = estado
 end)
 
@@ -290,4 +307,4 @@ criarBotao("Super Pulo", 180, function(estado)
 	end
 end)
 
-print("Hub Blox Fruits carregado com sucesso!")
+print("Hub Blox Fruits Otimizado carregado com sucesso!")
