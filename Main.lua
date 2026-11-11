@@ -1,310 +1,369 @@
---// Hub Blox Fruits Sea 3 - Auto Farm 100% Otimizado (Main.lua)
+--// HUB LEVE - Versão com Boat Speed (Xeno Executor)
 local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
-local VirtualUser = game:GetService("VirtualUser")
-local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
-local rootPart = character:WaitForChild("HumanoidRootPart")
 
-player.CharacterAdded:Connect(function(charNovo)
-	character = charNovo
-	humanoid = charNovo:WaitForChild("Humanoid")
-	rootPart = charNovo:WaitForChild("HumanoidRootPart")
-end)
+local origFogEnd      = Lighting.FogEnd
+local origFogStart    = Lighting.FogStart
+local origBrightness  = Lighting.Brightness
+local origClockTime   = Lighting.ClockTime
+local origShadows     = Lighting.GlobalShadows
 
---// Prevenção contra desconexão por AFK
-player.Idled:Connect(function()
-	VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-	task.wait(1)
-	VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-end)
-
-local autoFarmAtivo = false
-local noclipAtivo = false
-local hubVisivel = true
-
---// Tabela Completa de Missões do Sea 3
-local missoesSea3 = {
-	{levelMin = 2450, questName = "PiratePortQuest", levelReq = 2450, npcName = "Pirate Port Quest Giver", enemyName = "Pirate Millionaire"},
-	{levelMin = 2400, questName = "HauntedQuest2", levelReq = 2400, npcName = "Haunted Quest Giver 2", enemyName = "Demonic Soul"},
-	{levelMin = 2350, questName = "HauntedQuest1", levelReq = 2350, npcName = "Haunted Quest Giver 1", enemyName = "Reborn Skeleton"},
-	{levelMin = 2300, questName = "NutQuest2", levelReq = 2300, npcName = "Nut Quest Giver 2", enemyName = "Cocoa Warrior"},
-	{levelMin = 2250, questName = "NutQuest1", levelReq = 2250, npcName = "Nut Quest Giver 1", enemyName = "Candy Rebel"},
-	{levelMin = 2200, questName = "IceCreamQuest2", levelReq = 2200, npcName = "Ice Cream Quest Giver 2", enemyName = "Ice Cream Chef"},
-	{levelMin = 2150, questName = "IceCreamQuest1", levelReq = 2150, npcName = "Ice Cream Quest Giver 1", enemyName = "Snow Demon"},
-	{levelMin = 2100, questName = "PeanutQuest2", levelReq = 2100, npcName = "Peanut Quest Giver 2", enemyName = "Pistachio Investigator"},
-	{levelMin = 2075, questName = "PeanutQuest1", levelReq = 2075, npcName = "Peanut Quest Giver 1", enemyName = "Peanut Scout"},
-	{levelMin = 2050, questName = "MarineTreeQuest", levelReq = 2050, npcName = "Marine Tree Quest Giver", enemyName = "Sunken Skeleton"},
-	{levelMin = 2000, questName = "HydraQuest2", levelReq = 2000, npcName = "Hydra Quest Giver 2", enemyName = "Giant Islander"},
-	{levelMin = 1950, questName = "HydraQuest1", levelReq = 1950, npcName = "Hydra Quest Giver 1", enemyName = "Warrior Pirate"},
-	{levelMin = 1900, questName = "JunglePirateQuest", levelReq = 1900, npcName = "Jungle Pirate Quest Giver", enemyName = "Musketeer Pirate"}
+local states = {
+    noclip    = false,
+    superPulo = false,
+    boatSpeed = false,
+    fullbright = false,
+    noFog     = false,
 }
 
-local function obterLevelAtual()
-	local success, level = pcall(function()
-		return player.Data.Level.Value
-	end)
-	return success and level or 1900
-end
+local jumpVal  = 100
+local boatVal  = 250 -- Velocidade padrão do barco modificada
+local playerGui = player:WaitForChild("PlayerGui")
 
-local function obterMissaoAtual()
-	local level = obterLevelAtual()
-	for _, missao in ipairs(missoesSea3) do
-		if level >= missao.levelMin then
-			return missao
-		end
-	end
-	return missoesSea3[#missoesSea3]
-end
-
---// Interface Gráfica Otimizada (Hub)
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "BloxFruitsSea3Hub"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = CoreGui
-
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 240, 0, 275)
-mainFrame.Position = UDim2.new(0.1, 0, 0.1, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-mainFrame.BorderSizePixel = 0
-mainFrame.Active = true
-mainFrame.Draggable = true
-mainFrame.Parent = screenGui
-
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, 0, 0, 40)
-titleLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleLabel.Text = "Blox Fruits Sea 3 Hub"
-titleLabel.TextSize = 16
-titleLabel.Font = Enum.Font.SourceSansBold
-titleLabel.Parent = mainFrame
-
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(0.9, 0, 0, 40)
-statusLabel.Position = UDim2.new(0.05, 0, 0, 45)
-statusLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-statusLabel.TextColor3 = Color3.fromRGB(200, 255, 200)
-statusLabel.TextSize = 12
-statusLabel.Font = Enum.Font.SourceSans
-statusLabel.TextWrapped = true
-statusLabel.Text = "Status: Aguardando..."
-statusLabel.Parent = mainFrame
-
-local containerBotoes = Instance.new("Folder")
-containerBotoes.Name = "ContainerBotoes"
-containerBotoes.Parent = mainFrame
-
-local btnMinimizar = Instance.new("TextButton")
-btnMinimizar.Size = UDim2.new(0, 30, 0, 30)
-btnMinimizar.Position = UDim2.new(1, -65, 0, 5)
-btnMinimizar.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-btnMinimizar.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnMinimizar.Text = "_"
-btnMinimizar.TextSize = 16
-btnMinimizar.Font = Enum.Font.SourceSansBold
-btnMinimizar.Parent = titleLabel
-
-btnMinimizar.MouseButton1Click:Connect(function()
-	hubVisivel = not hubVisivel
-	if hubVisivel then
-		mainFrame.Size = UDim2.new(0, 240, 0, 275)
-		btnMinimizar.Text = "_"
-		statusLabel.Visible = true
-		for _, filho in ipairs(containerBotoes:GetChildren()) do
-			if filho:IsA("GuiObject") then filho.Visible = true end
-		end
-	else
-		for _, filho in ipairs(containerBotoes:GetChildren()) do
-			if filho:IsA("GuiObject") then filho.Visible = false end
-		end
-		statusLabel.Visible = false
-		mainFrame.Size = UDim2.new(0, 240, 0, 40)
-		btnMinimizar.Text = "+"
-	end
+pcall(function()
+    local old = playerGui:FindFirstChild("LightHub")
+    if old then old:Destroy() end
 end)
 
-local btnFechar = Instance.new("TextButton")
-btnFechar.Size = UDim2.new(0, 30, 0, 30)
-btnFechar.Position = UDim2.new(1, -30, 0, 5)
-btnFechar.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-btnFechar.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnFechar.Text = "X"
-btnFechar.TextSize = 14
-btnFechar.Font = Enum.Font.SourceSansBold
-btnFechar.Parent = titleLabel
+local sg = Instance.new("ScreenGui")
+sg.Name = "LightHub"
+sg.ResetOnSpawn = false
+sg.Parent = playerGui
 
-btnFechar.MouseButton1Click:Connect(function()
-	autoFarmAtivo = false
-	noclipAtivo = false
-	if humanoid and humanoid.Parent then humanoid.JumpPower = 50 end
-	screenGui:Destroy()
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 240, 0, 420)
+frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+frame.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = sg
+
+local fc = Instance.new("UICorner")
+fc.CornerRadius = UDim.new(0, 10)
+fc.Parent = frame
+
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 42)
+titleBar.BackgroundColor3 = Color3.fromRGB(80, 40, 180)
+titleBar.BorderSizePixel = 0
+titleBar.Parent = frame
+
+local tc = Instance.new("UICorner")
+tc.CornerRadius = UDim.new(0, 10)
+tc.Parent = titleBar
+
+local tFix = Instance.new("Frame")
+tFix.Size = UDim2.new(1, 0, 0.5, 0)
+tFix.Position = UDim2.new(0, 0, 0.5, 0)
+tFix.BackgroundColor3 = Color3.fromRGB(80, 40, 180)
+tFix.BorderSizePixel = 0
+tFix.Parent = titleBar
+
+local tLabel = Instance.new("TextLabel")
+tLabel.Size = UDim2.new(1, -40, 1, 0)
+tLabel.BackgroundTransparency = 1
+tLabel.Text = "Cheat Hub - Blox Fruits"
+tLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+tLabel.TextSize = 14
+tLabel.Font = Enum.Font.SourceSansBold
+tLabel.Parent = titleBar
+
+local xBtn = Instance.new("TextButton")
+xBtn.Size = UDim2.new(0, 26, 0, 26)
+xBtn.Position = UDim2.new(1, -32, 0.5, -13)
+xBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+xBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+xBtn.Text = "X"
+xBtn.TextSize = 12
+xBtn.Font = Enum.Font.SourceSansBold
+xBtn.Parent = titleBar
+
+local xc = Instance.new("UICorner")
+xc.CornerRadius = UDim.new(0, 6)
+xc.Parent = xBtn
+
+xBtn.MouseButton1Click:Connect(function()
+    frame.Visible = false
 end)
 
-local function criarBotao(nomeTexto, posicaoY, callback)
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0.9, 0, 0, 35)
-	btn.Position = UDim2.new(0.05, 0, 0, posicaoY)
-	btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	btn.Text = nomeTexto .. ": [DESLIGADO]"
-	btn.TextSize = 14
-	btn.Font = Enum.Font.SourceSans
-	btn.Parent = containerBotoes
-	
-	local ligado = false
-	btn.MouseButton1Click:Connect(function()
-		ligado = not ligado
-		if ligado then
-			btn.Text = nomeTexto .. ": [LIGADO]"
-			btn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-		else
-			btn.Text = nomeTexto .. ": [DESLIGADO]"
-			btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-		end
-		callback(ligado)
-	end)
+local info = Instance.new("TextLabel")
+info.Size = UDim2.new(1, 0, 0, 14)
+info.Position = UDim2.new(0, 0, 0, 44)
+info.BackgroundTransparency = 1
+info.Text = "Arraste pelo título para mover"
+info.TextColor3 = Color3.fromRGB(110, 110, 140)
+info.TextSize = 10
+info.Font = Enum.Font.SourceSans
+info.Parent = frame
+
+local function toggle(nome, desc, posY, cb)
+    local f = Instance.new("Frame")
+    f.Size = UDim2.new(1, -16, 0, 46)
+    f.Position = UDim2.new(0, 8, 0, posY)
+    f.BackgroundColor3 = Color3.fromRGB(26, 26, 38)
+    f.BorderSizePixel = 0
+    f.Parent = frame
+
+    local fc2 = Instance.new("UICorner")
+    fc2.CornerRadius = UDim.new(0, 7)
+    fc2.Parent = f
+
+    local n = Instance.new("TextLabel")
+    n.Size = UDim2.new(0.65, 0, 0.55, 0)
+    n.Position = UDim2.new(0, 8, 0, 3)
+    n.BackgroundTransparency = 1
+    n.Text = nome
+    n.TextColor3 = Color3.fromRGB(220, 220, 255)
+    n.TextSize = 12
+    n.Font = Enum.Font.SourceSansBold
+    n.TextXAlignment = Enum.TextXAlignment.Left
+    n.Parent = f
+
+    local d = Instance.new("TextLabel")
+    d.Size = UDim2.new(0.65, 0, 0.4, 0)
+    d.Position = UDim2.new(0, 8, 0.56, 0)
+    d.BackgroundTransparency = 1
+    d.Text = desc
+    d.TextColor3 = Color3.fromRGB(110, 110, 140)
+    d.TextSize = 9
+    d.Font = Enum.Font.SourceSans
+    d.TextXAlignment = Enum.TextXAlignment.Left
+    d.Parent = f
+
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.new(0, 40, 0, 22)
+    bg.Position = UDim2.new(1, -48, 0.5, -11)
+    bg.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    bg.BorderSizePixel = 0
+    bg.Parent = f
+
+    local bgc = Instance.new("UICorner")
+    bgc.CornerRadius = UDim.new(1, 0)
+    bgc.Parent = bg
+
+    local ball = Instance.new("Frame")
+    ball.Size = UDim2.new(0, 16, 0, 16)
+    ball.Position = UDim2.new(0, 3, 0.5, -8)
+    ball.BackgroundColor3 = Color3.fromRGB(160, 160, 180)
+    ball.BorderSizePixel = 0
+    ball.Parent = bg
+
+    local bc = Instance.new("UICorner")
+    bc.CornerRadius = UDim.new(1, 0)
+    bc.Parent = ball
+
+    local on = false
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 1, 0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    btn.Parent = f
+
+    btn.MouseButton1Click:Connect(function()
+        on = not on
+        local TS = game:GetService("TweenService")
+        TS:Create(bg, TweenInfo.new(0.15), {
+            BackgroundColor3 = on and Color3.fromRGB(80,40,180) or Color3.fromRGB(50,50,70)
+        }):Play()
+        TS:Create(ball, TweenInfo.new(0.15), {
+            Position = on and UDim2.new(0,21,0.5,-8) or UDim2.new(0,3,0.5,-8),
+            BackgroundColor3 = on and Color3.fromRGB(255,255,255) or Color3.fromRGB(160,160,180)
+        }):Play()
+        cb(on)
+    end)
 end
 
---// Sistema de Noclip Seguro
-RunService.Stepped:Connect(function()
-	if (autoFarmAtivo or noclipAtivo) and character and character:FindFirstChild("HumanoidRootPart") then
-		for _, parte in ipairs(character:GetDescendants()) do
-			if parte:IsA("BasePart") then
-				parte.CanCollide = false
-			end
-		end
-	end
+local activeDrag = nil
+UserInputService.InputChanged:Connect(function(inp)
+    if activeDrag and inp.UserInputType == Enum.UserInputType.MouseMovement then
+        activeDrag(inp.Position.X)
+    end
+end)
+UserInputService.InputEnded:Connect(function(inp)
+    if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+        activeDrag = nil
+    end
 end)
 
---// Voo Suave Seguro por Tween
-local function voarAte(destinoCFrame)
-	if not rootPart then return end
-	local distancia = (rootPart.Position - destinoCFrame.Position).Magnitude
-	local tempo = distancia / 350
-	if tempo < 0.3 then tempo = 0.3 end
+local function slider(nome, posY, minV, maxV, defV, cb)
+    local c = Instance.new("Frame")
+    c.Size = UDim2.new(1, -16, 0, 48)
+    c.Position = UDim2.new(0, 8, 0, posY)
+    c.BackgroundColor3 = Color3.fromRGB(26, 26, 38)
+    c.BorderSizePixel = 0
+    c.Parent = frame
 
-	local infoTween = TweenInfo.new(tempo, Enum.EasingStyle.Linear)
-	local tween = TweenService:Create(rootPart, infoTween, {CFrame = destinoCFrame})
-	tween:Play()
-	
-	local conn
-	conn = RunService.Stepped:Connect(function()
-		if not autoFarmAtivo or not rootPart then
-			tween:Cancel()
-			conn:Disconnect()
-		end
-	end)
-	
-	task.wait(tempo)
-	if conn then conn:Disconnect() end
+    local cc = Instance.new("UICorner")
+    cc.CornerRadius = UDim.new(0, 7)
+    cc.Parent = c
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -10, 0, 18)
+    lbl.Position = UDim2.new(0, 8, 0, 4)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = nome .. ": " .. defV
+    lbl.TextColor3 = Color3.fromRGB(220, 220, 255)
+    lbl.TextSize = 11
+    lbl.Font = Enum.Font.SourceSansBold
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = c
+
+    local track = Instance.new("Frame")
+    track.Size = UDim2.new(1, -16, 0, 7)
+    track.Position = UDim2.new(0, 8, 0, 30)
+    track.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    track.BorderSizePixel = 0
+    track.Parent = c
+
+    local trc = Instance.new("UICorner")
+    trc.CornerRadius = UDim.new(1, 0)
+    trc.Parent = track
+
+    local rel0 = (defV - minV) / (maxV - minV)
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(rel0, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(80, 40, 180)
+    fill.BorderSizePixel = 0
+    fill.Parent = track
+
+    local fillc = Instance.new("UICorner")
+    fillc.CornerRadius = UDim.new(1, 0)
+    fillc.Parent = fill
+
+    local knob = Instance.new("Frame")
+    knob.Size = UDim2.new(0, 14, 0, 14)
+    knob.AnchorPoint = Vector2.new(0.5, 0.5)
+    knob.Position = UDim2.new(rel0, 0, 0.5, 0)
+    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    knob.BorderSizePixel = 0
+    knob.Parent = track
+
+    local kc = Instance.new("UICorner")
+    kc.CornerRadius = UDim.new(1, 0)
+    kc.Parent = knob
+
+    local function update(x)
+        local r = math.clamp((x - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+        local v = math.floor(minV + (maxV - minV) * r)
+        fill.Size = UDim2.new(r, 0, 1, 0)
+        knob.Position = UDim2.new(r, 0, 0.5, 0)
+        lbl.Text = nome .. ": " .. v
+        cb(v)
+    end
+
+    local hitbox = Instance.new("TextButton")
+    hitbox.Size = UDim2.new(1, 0, 3, 0)
+    hitbox.Position = UDim2.new(0, 0, -1, 0)
+    hitbox.BackgroundTransparency = 1
+    hitbox.Text = ""
+    hitbox.Parent = track
+
+    hitbox.MouseButton1Down:Connect(function()
+        activeDrag = update
+    end)
 end
 
---// Funções de Ação do Jogo
-local function pegarMissao(questName, levelReq)
-	pcall(function()
-		local comms = game:GetService("ReplicatedStorage").Remotes.CommF_
-		comms:InvokeServer("StartQuest", questName, levelReq)
-	end)
-end
-
-local function buscarInimigo(nomeInimigo)
-	local inimigos = workspace:FindFirstChild("Enemies")
-	if inimigos then
-		for _, mob in ipairs(inimigos:GetChildren()) do
-			local mobHumanoid = mob:FindFirstChild("Humanoid")
-			local mobRoot = mob:FindFirstChild("HumanoidRootPart")
-			if mob.Name == nomeInimigo and mobHumanoid and mobHumanoid.Health > 0 and mobRoot then
-				return mob
-			end
-		end
-	end
-	return nil
-end
-
-local function atacar()
-	pcall(function()
-		VirtualUser:Button1Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-	end)
-end
-
---// Loop Principal de Automação Blindado contra Erros
+-- Lógica do Noclip leve
 task.spawn(function()
-	while true do
-		task.wait(0.2)
-		if autoFarmAtivo and character and rootPart then
-			local success, err = pcall(function()
-				local missaoAtual = obterMissaoAtual()
-				local levelAtual = obterLevelAtual()
-				
-				statusLabel.Text = string.format("Lvl: %d | Alvo: %s", levelAtual, missaoAtual.enemyName)
-				
-				local mainGui = player.PlayerGui:FindFirstChild("Main")
-				local temMissao = mainGui and mainGui:FindFirstChild("Quest") and mainGui.Quest.Visible
-
-				if not temMissao then
-					statusLabel.Text = string.format("Buscando Quest: %s", missaoAtual.enemyName)
-					local npc = workspace:FindFirstChild("NPCs") and workspace.NPCs:FindFirstChild(missaoAtual.npcName)
-					if npc and npc:FindFirstChild("HumanoidRootPart") then
-						voarAte(npc.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3))
-						task.wait(0.4)
-						pegarMissao(missaoAtual.questName, missaoAtual.levelReq)
-						task.wait(0.6)
-					end
-				else
-					local alvo = buscarInimigo(missaoAtual.enemyName)
-					if alvo then
-						local mobRoot = alvo.HumanoidRootPart
-						local mobHumanoid = alvo.Humanoid
-
-						statusLabel.Text = string.format("Atacando: %s", missaoAtual.enemyName)
-						voarAte(mobRoot.CFrame * CFrame.new(0, 8, 0))
-
-						while autoFarmAtivo and mobHumanoid and mobHumanoid.Health > 0 and alvo.Parent do
-							if rootPart and mobRoot then
-								rootPart.CFrame = mobRoot.CFrame * CFrame.new(0, 8, 0) * CFrame.Angles(math.rad(-90), 0, 0)
-								atacar()
-							end
-							task.wait(0.1)
-						end
-					else
-						statusLabel.Text = string.format("Aguardando Spawn: %s", missaoAtual.enemyName)
-					end
-				end
-			end)
-			
-			if not success then
-				-- Se ocorrer qualquer imprevisto, o script apenas aguarda e tenta novamente sem travar
-				task.wait(1)
-			end
-		else
-			if not autoFarmAtivo then
-				statusLabel.Text = "Status: [DESLIGADO]"
-			end
-		end
-	end
+    while true do
+        task.wait(0.1)
+        if states.noclip and character then
+            for _, p in ipairs(character:GetDescendants()) do
+                if p:IsA("BasePart") then
+                    p.CanCollide = false
+                end
+            end
+        end
+    end
 end)
 
---// Registro dos Botões
-criarBotao("Auto Farm (Sea 3 Safe)", 90, function(estado)
-	autoFarmAtivo = estado
+-- Lógica da Velocidade do Barco (Boat Speed)
+task.spawn(function()
+    while true do
+        task.wait(0.2)
+        if states.boatSpeed then
+            for _, v in ipairs(Workspace:GetDescendants()) do
+                if v:IsA("VehicleSeat") or v.Name:lower():find("boat") or v.Name:lower():find("ship") then
+                    if v.AssemblyLinearVelocity.Magnitude > 5 then
+                        v.AssemblyLinearVelocity = v.CFrame.LookVector * boatVal
+                    end
+                end
+            end
+        end
+    end
 end)
 
-criarBotao("Atravessar Paredes", 135, function(estado)
-	noclipAtivo = estado
+player.CharacterAdded:Connect(function(c)
+    character = c
+    humanoid = c:WaitForChild("Humanoid")
+    if states.superPulo then humanoid.JumpPower = jumpVal end
 end)
 
-criarBotao("Super Pulo", 180, function(estado)
-	if estado then
-		humanoid.JumpPower = 150
-	else
-		humanoid.JumpPower = 50
-	end
+local Y = 62
+
+toggle("Noclip", "Atravessa paredes", Y, function(on)
+    states.noclip = on
+    if not on and character then
+        for _, p in ipairs(character:GetDescendants()) do
+            if p:IsA("BasePart") then p.CanCollide = true end
+        end
+    end
+end) 
+Y = Y + 50
+
+toggle("Super Pulo", "Ajuste o valor abaixo", Y, function(on)
+    states.superPulo = on
+    if humanoid then humanoid.JumpPower = on and jumpVal or 50 end
+end) 
+Y = Y + 50
+
+slider("Pulo", Y, 50, 300, jumpVal, function(v)
+    jumpVal = v
+    if states.superPulo and humanoid then humanoid.JumpPower = v end
+end) 
+Y = Y + 52
+
+toggle("Boat Speed", "Acelera qualquer barco", Y, function(on)
+    states.boatSpeed = on
+end) 
+Y = Y + 50
+
+slider("Vel. Barco", Y, 50, 500, boatVal, function(v)
+    boatVal = v
+end) 
+Y = Y + 52
+
+toggle("Fullbright", "Iluminacao maxima", Y, function(on)
+    states.fullbright = on
+    if on then
+        Lighting.Brightness = 5
+        Lighting.ClockTime = 14
+        Lighting.GlobalShadows = false
+        Lighting.Ambient = Color3.fromRGB(255,255,255)
+        Lighting.OutdoorAmbient = Color3.fromRGB(255,255,255)
+    else
+        Lighting.Brightness = origBrightness
+        Lighting.ClockTime = origClockTime
+        Lighting.GlobalShadows = origShadows
+        Lighting.Ambient = Color3.fromRGB(0,0,0)
+        Lighting.OutdoorAmbient = Color3.fromRGB(127,127,127)
+    end
+end) 
+Y = Y + 50
+
+toggle("Remover Fog", "Remove nevoa do mapa", Y, function(on)
+    states.noFog = on
+    Lighting.FogEnd   = on and 1e9 or origFogEnd
+    Lighting.FogStart = on and 1e9 or origFogStart
 end)
 
-print("Hub Blox Fruits Otimizado carregado com sucesso!")
+print("Hub com Boat Speed carregado com sucesso!")
