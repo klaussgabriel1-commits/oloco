@@ -1,4 +1,4 @@
---// MENU DO AÇAÍ [INSTANT LOAD + KEYBIND CONFIG] - Xeno Executor
+--// MENU DO AÇAÍ [ULTIMATE AUTO-FARM EDITION] - Xeno Executor
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
@@ -8,6 +8,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 local TeleportService = game:GetService("TeleportService")
 local SoundService = game:GetService("SoundService")
+local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
@@ -48,7 +49,7 @@ local speedVal = 16
 local boatVal = 150
 local spectateTarget = nil
 local followTarget = nil
-local toggleKey = Enum.KeyCode.Delete -- Tecla padrão inicial para abrir/fechar
+local toggleKey = Enum.KeyCode.Delete
 
 -- Remove hub anterior se já existir
 pcall(function()
@@ -97,7 +98,6 @@ end
 
 openBtn.MouseButton1Click:Connect(toggleMenu)
 
--- Listener de Teclado para Abrir/Fechar (Keybind)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and input.KeyCode == toggleKey then
         toggleMenu()
@@ -117,7 +117,7 @@ local tLabel = Instance.new("TextLabel")
 tLabel.Size = UDim2.new(1, -40, 1, 0)
 tLabel.Position = UDim2.new(0, 12, 0, 0)
 tLabel.BackgroundTransparency = 1
-tLabel.Text = "Menu do Açaí [Instant + Keybind]"
+tLabel.Text = "Menu do Açaí [Ultimate Farm Engine]"
 tLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 tLabel.TextSize = 14
 tLabel.Font = Enum.Font.SourceSansBold
@@ -372,7 +372,7 @@ local function addSlider(parentPage, nome, minV, maxV, defV, cb)
     end)
 end
 
--- === ESP SISTEMA ===
+-- === SISTEMA DE ESP ===
 local function removeESP(p)
     if p.Character then
         local h = p.Character:FindFirstChild("AcaiHighlight")
@@ -426,7 +426,7 @@ Players.PlayerAdded:Connect(addESP)
 Players.PlayerRemoving:Connect(removeESP)
 for _, p in ipairs(Players:GetPlayers()) do addESP(p) end
 
--- === FUNÇÕES DE ALVO ===
+-- === FUNÇÕES DE ALVO & BUSCA INTELIGENTE ===
 local function getClosestPlayerHead()
     local closestTarget = nil
     local shortestDist = math.huge
@@ -449,26 +449,57 @@ local function getClosestPlayerHead()
     return closestTarget
 end
 
-local function getClosestMob()
-    local closestMob = nil
-    local shortestDist = math.huge
-    for _, v in ipairs(Workspace:GetChildren()) do
-        if v:IsA("Model") and v.PrimaryPart then
-            local hum = v:FindFirstChildOfClass("Humanoid")
-            local hrp = v:FindFirstChild("HumanoidRootPart")
-            local charRef = player.Character
-            if hum and hrp and charRef and charRef:FindFirstChild("HumanoidRootPart") and hum.Health > 0 then
-                if not Players:GetPlayerFromCharacter(v) then
-                    local dist = (charRef.HumanoidRootPart.Position - hrp.Position).Magnitude
-                    if dist < shortestDist then
-                        shortestDist = dist
-                        closestMob = hrp
+-- Motor Avançado de Varredura de Mobs para Auto Farm
+local function getBestMobTarget()
+    local bestMob = nil
+    local minDistance = math.huge
+    local charRef = player.Character
+    local rootRef = charRef and charRef:FindFirstChild("HumanoidRootPart")
+    
+    if not rootRef then return nil end
+
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") and obj ~= charRef then
+            local humanoid = obj:FindFirstChildOfClass("Humanoid")
+            local rootPart = obj:FindFirstChild("HumanoidRootPart")
+            
+            if humanoid and rootPart and humanoid.Health > 0 then
+                -- Garante que não é um jogador
+                if not Players:GetPlayerFromCharacter(obj) then
+                    local distance = (rootRef.Position - rootPart.Position).Magnitude
+                    if distance < minDistance then
+                        minDistance = distance
+                        bestMob = rootPart
                     end
                 end
             end
         end
     end
-    return closestMob
+    return bestMob
+end
+
+-- Localizador de NPC de Missão (Quest Giver)
+local function getClosestQuestNPC()
+    local closestNPC = nil
+    local shortestDist = math.huge
+    local charRef = player.Character
+    local rootRef = charRef and charRef:FindFirstChild("HumanoidRootPart")
+    
+    if not rootRef then return nil end
+
+    for _, desc in ipairs(Workspace:GetDescendants()) do
+        if desc:IsA("ProximityPrompt") and desc.Parent then
+            local parentPart = desc.Parent
+            if parentPart:IsA("BasePart") then
+                local dist = (rootRef.Position - parentPart.Position).Magnitude
+                if dist < shortestDist then
+                    shortestDist = dist
+                    closestNPC = desc
+                end
+            end
+        end
+    end
+    return closestNPC
 end
 
 -- === POPULANDO AS ABAS ===
@@ -585,28 +616,35 @@ refreshFollowList()
 Players.PlayerAdded:Connect(refreshFollowList)
 Players.PlayerRemoving:Connect(refreshFollowList)
 
--- 5. Aba Farm
-addToggle(tabFarm, "Auto-Farm Leve", "Caminha até os monstros", false, function(on)
+-- 5. Aba Farm (Ultimate Auto Farm Engine - Multithread Avançado)
+addToggle(tabFarm, "Auto-Farm Pro", "Pega missão automaticamente e ataca os monstros", false, function(on)
     states.autoFarm = on
     task.spawn(function()
         while states.autoFarm do
-            task.wait(0.5)
+            task.wait(0.15)
             pcall(function()
                 local char = player.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 local hum = char and char:FindFirstChildOfClass("Humanoid")
+                
                 if char and hrp and hum and hum.Health > 0 then
-                    for _, obj in ipairs(Workspace:GetChildren()) do
-                        if obj:IsA("ProximityPrompt") and obj.Parent then
-                            local parentPart = obj.Parent
-                            if parentPart:IsA("BasePart") and (parentPart.Position - hrp.Position).Magnitude < 15 then
-                                fireproximityprompt(obj)
-                            end
-                        end
+                    -- Passo A: Interagir com missões e baús próximos automaticamente
+                    local questPrompt = getClosestQuestNPC()
+                    if questPrompt and (questPrompt.Parent.Position - hrp.Position).Magnitude < 30 then
+                        fireproximityprompt(questPrompt)
                     end
-                    local mobHrp = getClosestMob()
-                    if mobHrp and (mobHrp.Position - hrp.Position).Magnitude < 80 then
-                        hum:MoveTo(mobHrp.Position)
+
+                    -- Passo B: Executar ciclo de ataque e posicionamento estratégico no mob
+                    local targetMob = getBestMobTarget()
+                    if targetMob then
+                        -- Posicionamento perfeito para ataque corpo a corpo (acima e levemente à frente)
+                        hrp.CFrame = targetMob.CFrame * CFrame.new(0, 4, 2)
+                        hum:MoveTo(targetMob.Position)
+
+                        -- Disparo de ataque contínuo com VirtualUser
+                        VirtualUser:Button1Down(Vector2.new(0, 0), camera.CFrame)
+                        task.wait(0.05)
+                        VirtualUser:Button1Up(Vector2.new(0, 0), camera.CFrame)
                     end
                 end
             end)
@@ -715,12 +753,11 @@ bindBtn.MouseButton1Click:Connect(function()
 end)
 
 -- Anti-AFK
-local vu = game:GetService("VirtualUser")
 player.Idled:Connect(function()
     if states.antiAfk then
-        vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
         task.wait(1)
-        vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
     end
 end)
 
@@ -883,4 +920,4 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
-print("Menu do Açaí [Instant Load + Keybind] Carregado com Sucesso!")
+print("Menu do Açaí [Ultimate Auto-Farm Engine] Carregado com Sucesso!")
