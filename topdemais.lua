@@ -1,4 +1,4 @@
---// MENU DO AÇAÍ COMPLETO (ULTRA STABLE NO-LAG) - Xeno Executor
+--// MENU DO AÇAÍ [INSTANT LOAD + KEYBIND CONFIG] - Xeno Executor
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
@@ -10,21 +10,12 @@ local TeleportService = game:GetService("TeleportService")
 local SoundService = game:GetService("SoundService")
 
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local rootPart = character:WaitForChild("HumanoidRootPart")
 local camera = Workspace.CurrentCamera
 
 -- Bypass seguro para o Xeno Executor (gethui)
 local guiParent
-local success, result = pcall(function()
-    return gethui()
-end)
-if success and result then
-    guiParent = result
-else
-    guiParent = CoreGui
-end
+pcall(function() guiParent = gethui() end)
+guiParent = guiParent or CoreGui
 
 -- Salva valores originais do mapa
 local origFogEnd     = Lighting.FogEnd
@@ -34,30 +25,30 @@ local origClockTime  = Lighting.ClockTime
 local origShadows    = Lighting.GlobalShadows
 
 local states = {
-    noclip       = false,
-    superPulo    = false,
-    walkSpeed    = false,
-    infiniteJump = false,
-    waterWalk    = false,
-    boatFly      = false,
-    fullbright   = false,
-    noFog        = false,
-    espPlayers   = false,
-    espFruits    = false,
-    espChests    = false,
-    espIslands   = false,
-    hitbox       = false,
-    aimbot       = false,
-    antiAfk      = false,
-    autoFarm     = false,
-    spectating   = false,
-    vehicleBounce= false,
+    noclip        = false,
+    superPulo     = false,
+    walkSpeed     = false,
+    infiniteJump  = false,
+    waterWalk     = false,
+    boatFly       = false,
+    fullbright    = false,
+    noFog         = false,
+    espPlayers    = false,
+    hitbox        = false,
+    aimbot        = false,
+    antiAfk       = true,
+    autoFarm      = false,
+    spectating    = false,
+    vehicleBounce = false,
+    following     = false,
 }
 
 local jumpVal = 100
 local speedVal = 16
 local boatVal = 150
 local spectateTarget = nil
+local followTarget = nil
+local toggleKey = Enum.KeyCode.Delete -- Tecla padrão inicial para abrir/fechar
 
 -- Remove hub anterior se já existir
 pcall(function()
@@ -71,7 +62,7 @@ sg.Name = "MenuDoAcaiHub"
 sg.ResetOnSpawn = false
 sg.Parent = guiParent
 
--- Botão Flutuante "AÇAÍ"
+-- Botão Flutuante "AÇAÍ" (Mobile)
 local openBtn = Instance.new("TextButton")
 openBtn.Size = UDim2.new(0, 48, 0, 48)
 openBtn.Position = UDim2.new(0.02, 0, 0.2, 0)
@@ -100,8 +91,17 @@ frame.Parent = sg
 
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
 
-openBtn.MouseButton1Click:Connect(function()
+local function toggleMenu()
     frame.Visible = not frame.Visible
+end
+
+openBtn.MouseButton1Click:Connect(toggleMenu)
+
+-- Listener de Teclado para Abrir/Fechar (Keybind)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == toggleKey then
+        toggleMenu()
+    end
 end)
 
 -- Barra Superior (Título)
@@ -117,7 +117,7 @@ local tLabel = Instance.new("TextLabel")
 tLabel.Size = UDim2.new(1, -40, 1, 0)
 tLabel.Position = UDim2.new(0, 12, 0, 0)
 tLabel.BackgroundTransparency = 1
-tLabel.Text = "Menu do Açaí [No-Lag Edition]"
+tLabel.Text = "Menu do Açaí [Instant + Keybind]"
 tLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 tLabel.TextSize = 14
 tLabel.Font = Enum.Font.SourceSansBold
@@ -141,12 +141,18 @@ xBtn.MouseButton1Click:Connect(function()
 end)
 
 -- Painel Lateral esquerdo (Abas)
-local sidebar = Instance.new("Frame")
+local sidebar = Instance.new("ScrollingFrame")
 sidebar.Size = UDim2.new(0, 120, 1, -68)
 sidebar.Position = UDim2.new(0, 0, 0, 38)
 sidebar.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
 sidebar.BorderSizePixel = 0
+sidebar.ScrollBarThickness = 2
 sidebar.Parent = frame
+
+local sidebarList = Instance.new("UIListLayout")
+sidebarList.Padding = UDim.new(0, 4)
+sidebarList.SortOrder = Enum.SortOrder.LayoutOrder
+sidebarList.Parent = sidebar
 
 -- Título da Aba Ativa na Direita
 local tabTitle = Instance.new("TextLabel")
@@ -160,20 +166,17 @@ tabTitle.Font = Enum.Font.SourceSansBold
 tabTitle.TextXAlignment = Enum.TextXAlignment.Left
 tabTitle.Parent = frame
 
--- Container de Conteúdo com Rolagem
-local container = Instance.new("ScrollingFrame")
-container.Size = UDim2.new(1, -135, 1, -105)
-container.Position = UDim2.new(0, 130, 0, 75)
+-- Container Principal de Conteúdo
+local container = Instance.new("Frame")
+container.Size = UDim2.new(1, -135, 1, -85)
+container.Position = UDim2.new(0, 130, 0, 72)
 container.BackgroundTransparency = 1
-container.BorderSizePixel = 0
-container.ScrollBarThickness = 3
 container.Parent = frame
 
 local tabs = {}
-local function createTab(name, posY)
+local function createTab(name)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 28)
-    btn.Position = UDim2.new(0, 5, 0, posY)
+    btn.Size = UDim2.new(1, -6, 0, 32)
     btn.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
     btn.TextColor3 = Color3.fromRGB(180, 180, 210)
     btn.Text = name
@@ -182,9 +185,11 @@ local function createTab(name, posY)
     btn.Parent = sidebar
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
-    local page = Instance.new("Frame")
+    local page = Instance.new("ScrollingFrame")
     page.Size = UDim2.new(1, 0, 1, 0)
     page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.ScrollBarThickness = 3
     page.Visible = false
     page.Parent = container
 
@@ -192,6 +197,10 @@ local function createTab(name, posY)
     uiList.Padding = UDim.new(0, 8)
     uiList.SortOrder = Enum.SortOrder.LayoutOrder
     uiList.Parent = page
+
+    uiList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        page.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y + 10)
+    end)
 
     btn.MouseButton1Click:Connect(function()
         for _, p in pairs(tabs) do p.Visible = false end
@@ -204,18 +213,19 @@ local function createTab(name, posY)
 end
 
 -- Criando as Abas
-local tabPlayer   = createTab("Player", 5)
-local tabVeiculo  = createTab("Veículo", 36)
-local tabVisual   = createTab("Visual", 67)
-local tabPvp      = createTab("PvP", 98)
-local tabFarm     = createTab("Farm", 129)
-local tabSpectate = createTab("Spectate", 160)
-local tabOpcoes   = createTab("Opções", 191)
+local tabPlayer   = createTab("Player")
+local tabVeiculo  = createTab("Veículo")
+local tabVisual   = createTab("Visual")
+local tabPvp      = createTab("PvP")
+local tabFarm     = createTab("Farm")
+local tabSpectate = createTab("Spectate")
+local tabOpcoes   = createTab("Opções")
 
 tabPlayer.Visible = true
+sidebar.CanvasSize = UDim2.new(0, 0, 0, sidebarList.AbsoluteContentSize.Y + 10)
 
--- Funções Auxiliares
-local function addToggle(parentPage, nome, desc, cb)
+-- Funções Auxiliares de UI
+local function addToggle(parentPage, nome, desc, defaultState, cb)
     local f = Instance.new("Frame")
     f.Size = UDim2.new(1, -5, 0, 48)
     f.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
@@ -245,23 +255,24 @@ local function addToggle(parentPage, nome, desc, cb)
     d.TextXAlignment = Enum.TextXAlignment.Left
     d.Parent = f
 
+    local on = defaultState or false
+
     local bg = Instance.new("Frame")
     bg.Size = UDim2.new(0, 42, 0, 22)
     bg.Position = UDim2.new(1, -50, 0.5, -11)
-    bg.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    bg.BackgroundColor3 = on and Color3.fromRGB(80, 40, 180) or Color3.fromRGB(50, 50, 70)
     bg.BorderSizePixel = 0
     bg.Parent = f
     Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
 
     local ball = Instance.new("Frame")
     ball.Size = UDim2.new(0, 16, 0, 16)
-    ball.Position = UDim2.new(0, 3, 0.5, -8)
-    ball.BackgroundColor3 = Color3.fromRGB(160, 160, 180)
+    ball.Position = on and UDim2.new(0, 23, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
+    ball.BackgroundColor3 = on and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(160, 160, 180)
     ball.BorderSizePixel = 0
     ball.Parent = bg
     Instance.new("UICorner", ball).CornerRadius = UDim.new(1, 0)
 
-    local on = false
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 1, 0)
     btn.BackgroundTransparency = 1
@@ -361,19 +372,94 @@ local function addSlider(parentPage, nome, minV, maxV, defV, cb)
     end)
 end
 
--- Busca leve e otimizada de mobs
+-- === ESP SISTEMA ===
+local function removeESP(p)
+    if p.Character then
+        local h = p.Character:FindFirstChild("AcaiHighlight")
+        if h then h:Destroy() end
+        local t = p.Character:FindFirstChild("AcaiTag")
+        if t then t:Destroy() end
+    end
+end
+
+local function addESP(p)
+    if p == player then return end
+    local function apply(char)
+        task.wait(0.5)
+        if states.espPlayers and char then
+            removeESP(p)
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "AcaiHighlight"
+            highlight.Adornee = char
+            highlight.FillColor = Color3.fromRGB(138, 43, 226)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.FillTransparency = 0.5
+            highlight.Parent = char
+
+            local head = char:WaitForChild("Head", 2)
+            if head then
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "AcaiTag"
+                billboard.Size = UDim2.new(0, 100, 0, 40)
+                billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+                billboard.AlwaysOnTop = true
+                billboard.Adornee = head
+                billboard.Parent = char
+
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = p.Name
+                nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                nameLabel.TextSize = 12
+                nameLabel.Font = Enum.Font.SourceSansBold
+                nameLabel.TextStrokeTransparency = 0.3
+                nameLabel.Parent = billboard
+            end
+        end
+    end
+    p.CharacterAdded:Connect(apply)
+    if p.Character then apply(p.Character) end
+end
+
+Players.PlayerAdded:Connect(addESP)
+Players.PlayerRemoving:Connect(removeESP)
+for _, p in ipairs(Players:GetPlayers()) do addESP(p) end
+
+-- === FUNÇÕES DE ALVO ===
+local function getClosestPlayerHead()
+    local closestTarget = nil
+    local shortestDist = math.huge
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            local hum = p.Character:FindFirstChildOfClass("Humanoid")
+            local head = p.Character:FindFirstChild("Head")
+            if hum and hum.Health > 0 and head then
+                local pos, onScreen = camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)).Magnitude
+                    if dist < shortestDist then
+                        shortestDist = dist
+                        closestTarget = head
+                    end
+                end
+            end
+        end
+    end
+    return closestTarget
+end
+
 local function getClosestMob()
     local closestMob = nil
     local shortestDist = math.huge
-    
     for _, v in ipairs(Workspace:GetChildren()) do
-        if v:IsA("Model") and v ~= character then
+        if v:IsA("Model") and v.PrimaryPart then
             local hum = v:FindFirstChildOfClass("Humanoid")
             local hrp = v:FindFirstChild("HumanoidRootPart")
-            if hum and hrp and hum.Health > 0 then
-                local isPlayerChar = Players:GetPlayerFromCharacter(v)
-                if not isPlayerChar then
-                    local dist = (rootPart.Position - hrp.Position).Magnitude
+            local charRef = player.Character
+            if hum and hrp and charRef and charRef:FindFirstChild("HumanoidRootPart") and hum.Health > 0 then
+                if not Players:GetPlayerFromCharacter(v) then
+                    local dist = (charRef.HumanoidRootPart.Position - hrp.Position).Magnitude
                     if dist < shortestDist then
                         shortestDist = dist
                         closestMob = hrp
@@ -388,27 +474,36 @@ end
 -- === POPULANDO AS ABAS ===
 
 -- 1. Aba Player
-addToggle(tabPlayer, "Noclip", "Atravessa paredes", function(on) states.noclip = on end)
-addToggle(tabPlayer, "Super Pulo", "Ativa pulo alto", function(on)
+addToggle(tabPlayer, "Noclip", "Atravessa paredes", false, function(on) states.noclip = on end)
+addToggle(tabPlayer, "Super Pulo", "Ativa pulo alto", false, function(on)
     states.superPulo = on
-    if humanoid then humanoid.UseJumpPower = true humanoid.JumpPower = on and jumpVal or 50 end
+    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    if hum then hum.UseJumpPower = true hum.JumpPower = on and jumpVal or 50 end
 end)
 addSlider(tabPlayer, "Força do Pulo", 50, 300, jumpVal, function(v)
     jumpVal = v
-    if states.superPulo and humanoid then humanoid.JumpPower = v end
+    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    if states.superPulo and hum then hum.JumpPower = v end
 end)
-addToggle(tabPlayer, "WalkSpeed", "Aumenta a velocidade", function(on) states.walkSpeed = on end)
+addToggle(tabPlayer, "WalkSpeed", "Aumenta a velocidade", false, function(on) states.walkSpeed = on end)
 addSlider(tabPlayer, "Velocidade", 16, 300, speedVal, function(v) speedVal = v end)
-addToggle(tabPlayer, "Pulo Infinito", "Pula várias vezes no ar", function(on) states.infiniteJump = on end)
+addToggle(tabPlayer, "Pulo Infinito", "Pula várias vezes no ar", false, function(on) states.infiniteJump = on end)
 
 -- 2. Aba Veículo
-addToggle(tabVeiculo, "Boat Fly", "Faz o barco voar e acelerar", function(on) states.boatFly = on end)
-addSlider(tabVeiculo, "Velocidade do Barco", 50, 300, 150, function(v) end)
-addToggle(tabVeiculo, "Impulso de Veículo", "Faz o veículo pular/destravar", function(on) states.vehicleBounce = on end)
+addToggle(tabVeiculo, "Boat Fly", "Faz o barco voar e acelerar", false, function(on) states.boatFly = on end)
+addSlider(tabVeiculo, "Velocidade do Barco", 50, 300, 150, function(v) boatVal = v end)
+addToggle(tabVeiculo, "Impulso de Veículo", "Faz o veículo pular/destravar", false, function(on) states.vehicleBounce = on end)
 
 -- 3. Aba Visual
-addToggle(tabVisual, "ESP Players", "Mostra jogadores nas paredes", function(on) states.espPlayers = on end)
-addToggle(tabVisual, "Fullbright", "Iluminação máxima", function(on)
+addToggle(tabVisual, "ESP Players", "Mostra jogadores nas paredes", false, function(on)
+    states.espPlayers = on
+    if on then
+        for _, p in ipairs(Players:GetPlayers()) do if p ~= player and p.Character then addESP(p) end end
+    else
+        for _, p in ipairs(Players:GetPlayers()) do removeESP(p) end
+    end
+end)
+addToggle(tabVisual, "Fullbright", "Iluminação máxima", false, function(on)
     states.fullbright = on
     if on then
         Lighting.Brightness = 5
@@ -421,11 +516,11 @@ addToggle(tabVisual, "Fullbright", "Iluminação máxima", function(on)
         Lighting.GlobalShadows = origShadows
     end
 end)
-addToggle(tabVisual, "Remover Fog", "Remove névoa completamente", function(on) states.noFog = on end)
+addToggle(tabVisual, "Remover Fog", "Remove névoa completamente", false, function(on) states.noFog = on end)
 
 -- 4. Aba PvP
-addToggle(tabPvp, "Aimbot", "Trava a câmera no alvo mais próximo", function(on) states.aimbot = on end)
-addToggle(tabPvp, "Aumentar Hitbox", "Facilita acertar inimigos", function(on)
+addToggle(tabPvp, "Aimbot", "Trava a câmera na cabeça do alvo", false, function(on) states.aimbot = on end)
+addToggle(tabPvp, "Aumentar Hitbox", "Facilita acertar inimigos", false, function(on)
     states.hitbox = on
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -437,28 +532,81 @@ addToggle(tabPvp, "Aumentar Hitbox", "Facilita acertar inimigos", function(on)
     end
 end)
 
--- 5. Aba Farm (Movimentação leve sem travamentos)
-addToggle(tabFarm, "Auto-Farm Leve", "Caminha até os monstros sem travar", function(on)
+local followLabel = Instance.new("TextLabel")
+followLabel.Size = UDim2.new(1, -5, 0, 22)
+followLabel.BackgroundTransparency = 1
+followLabel.Text = "--- SEGUIR JOGADOR ---"
+followLabel.TextColor3 = Color3.fromRGB(150, 150, 180)
+followLabel.TextSize = 11
+followLabel.Font = Enum.Font.SourceSansBold
+followLabel.Parent = tabPvp
+
+local function refreshFollowList()
+    task.spawn(function()
+        for _, child in ipairs(tabPvp:GetChildren()) do
+            if child:IsA("TextButton") and child.Name ~= "StopFollow" then child:Destroy() end
+        end
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= player then
+                local pBtn = Instance.new("TextButton")
+                pBtn.Size = UDim2.new(1, -5, 0, 32)
+                pBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+                pBtn.TextColor3 = Color3.fromRGB(220, 220, 255)
+                pBtn.Text = "Seguir: " .. p.Name
+                pBtn.TextSize = 11
+                pBtn.Font = Enum.Font.SourceSansBold
+                pBtn.Parent = tabPvp
+                Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0, 6)
+                pBtn.MouseButton1Click:Connect(function()
+                    followTarget = p
+                    states.following = true
+                end)
+            end
+        end
+    end)
+end
+
+local stopFollowBtn = Instance.new("TextButton")
+stopFollowBtn.Name = "StopFollow"
+stopFollowBtn.Size = UDim2.new(1, -5, 0, 32)
+stopFollowBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+stopFollowBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+stopFollowBtn.Text = "Parar de Seguir"
+stopFollowBtn.TextSize = 11
+stopFollowBtn.Font = Enum.Font.SourceSansBold
+stopFollowBtn.Parent = tabPvp
+Instance.new("UICorner", stopFollowBtn).CornerRadius = UDim.new(0, 6)
+stopFollowBtn.MouseButton1Click:Connect(function()
+    states.following = false
+    followTarget = nil
+end)
+
+refreshFollowList()
+Players.PlayerAdded:Connect(refreshFollowList)
+Players.PlayerRemoving:Connect(refreshFollowList)
+
+-- 5. Aba Farm
+addToggle(tabFarm, "Auto-Farm Leve", "Caminha até os monstros", false, function(on)
     states.autoFarm = on
     task.spawn(function()
         while states.autoFarm do
-            task.wait(0.5) -- Intervalo seguro para evitar lag e travamentos
+            task.wait(0.5)
             pcall(function()
-                if character and rootPart and humanoid and humanoid.Health > 0 then
-                    -- Procura e interage com missões próximas
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if char and hrp and hum and hum.Health > 0 then
                     for _, obj in ipairs(Workspace:GetChildren()) do
                         if obj:IsA("ProximityPrompt") and obj.Parent then
                             local parentPart = obj.Parent
-                            if parentPart:IsA("BasePart") and (parentPart.Position - rootPart.Position).Magnitude < 15 then
+                            if parentPart:IsA("BasePart") and (parentPart.Position - hrp.Position).Magnitude < 15 then
                                 fireproximityprompt(obj)
                             end
                         end
                     end
-
-                    -- Move até o mob de forma suave
                     local mobHrp = getClosestMob()
-                    if mobHrp and (mobHrp.Position - rootPart.Position).Magnitude < 80 then
-                        humanoid:MoveTo(mobHrp.Position)
+                    if mobHrp and (mobHrp.Position - hrp.Position).Magnitude < 80 then
+                        hum:MoveTo(mobHrp.Position)
                     end
                 end
             end)
@@ -468,28 +616,28 @@ end)
 
 -- 6. Aba Spectate
 local function refreshSpectateList()
-    for _, child in ipairs(tabSpectate:GetChildren()) do
-        if child:IsA("TextButton") and child.Name ~= "StopSpec" then child:Destroy() end
-    end
-
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= player then
-            local pBtn = Instance.new("TextButton")
-            pBtn.Size = UDim2.new(1, -5, 0, 32)
-            pBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-            pBtn.TextColor3 = Color3.fromRGB(220, 220, 255)
-            pBtn.Text = "Espiar: " .. p.Name
-            pBtn.TextSize = 11
-            pBtn.Font = Enum.Font.SourceSansBold
-            pBtn.Parent = tabSpectate
-            Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0, 6)
-
-            pBtn.MouseButton1Click:Connect(function()
-                spectateTarget = p
-                states.spectating = true
-            end)
+    task.spawn(function()
+        for _, child in ipairs(tabSpectate:GetChildren()) do
+            if child:IsA("TextButton") and child.Name ~= "StopSpec" then child:Destroy() end
         end
-    end
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= player then
+                local pBtn = Instance.new("TextButton")
+                pBtn.Size = UDim2.new(1, -5, 0, 32)
+                pBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+                pBtn.TextColor3 = Color3.fromRGB(220, 220, 255)
+                pBtn.Text = "Espiar: " .. p.Name
+                pBtn.TextSize = 11
+                pBtn.Font = Enum.Font.SourceSansBold
+                pBtn.Parent = tabSpectate
+                Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0, 6)
+                pBtn.MouseButton1Click:Connect(function()
+                    spectateTarget = p
+                    states.spectating = true
+                end)
+            end
+        end
+    end)
 end
 
 local stopSpecBtn = Instance.new("TextButton")
@@ -502,13 +650,11 @@ stopSpecBtn.TextSize = 11
 stopSpecBtn.Font = Enum.Font.SourceSansBold
 stopSpecBtn.Parent = tabSpectate
 Instance.new("UICorner", stopSpecBtn).CornerRadius = UDim.new(0, 6)
-
 stopSpecBtn.MouseButton1Click:Connect(function()
     states.spectating = false
     spectateTarget = nil
-    if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
-        camera.CameraSubject = player.Character:FindFirstChildOfClass("Humanoid")
-    end
+    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    if hum then camera.CameraSubject = hum end
 end)
 
 refreshSpectateList()
@@ -517,25 +663,76 @@ Players.PlayerRemoving:Connect(refreshSpectateList)
 
 -- 7. Aba Opções
 addSlider(tabOpcoes, "Ajustar FOV", 70, 120, math.floor(camera.FieldOfView), function(v) camera.FieldOfView = v end)
-addToggle(tabOpcoes, "Anti-AFK", "Evita timeout por inatividade", function(on)
-    states.antiAfk = on
-    if on then
-        local vu = game:GetService("VirtualUser")
-        player.Idled:Connect(function()
-            if states.antiAfk then
-                vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-                task.wait(1)
-                vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+
+-- Configuração de Keybind (Tecla para Abrir/Fechar)
+local bindFrame = Instance.new("Frame")
+bindFrame.Size = UDim2.new(1, -5, 0, 48)
+bindFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
+bindFrame.BorderSizePixel = 0
+bindFrame.Parent = tabOpcoes
+Instance.new("UICorner", bindFrame).CornerRadius = UDim.new(0, 6)
+
+local bindLabel = Instance.new("TextLabel")
+bindLabel.Size = UDim2.new(0.55, 0, 0, 20)
+bindLabel.Position = UDim2.new(0, 10, 0, 14)
+bindLabel.BackgroundTransparency = 1
+bindLabel.Text = "Tecla Menu (Bind)"
+bindLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
+bindLabel.TextSize = 12
+bindLabel.Font = Enum.Font.SourceSansBold
+bindLabel.TextXAlignment = Enum.TextXAlignment.Left
+bindLabel.Parent = bindFrame
+
+local bindBtn = Instance.new("TextButton")
+bindBtn.Size = UDim2.new(0, 100, 0, 26)
+bindBtn.Position = UDim2.new(1, -110, 0.5, -13)
+bindBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 180)
+bindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+bindBtn.Text = toggleKey.Name
+bindBtn.TextSize = 11
+bindBtn.Font = Enum.Font.SourceSansBold
+bindBtn.Parent = bindFrame
+Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 6)
+
+local listeningForKey = false
+bindBtn.MouseButton1Click:Connect(function()
+    if not listeningForKey then
+        listeningForKey = true
+        bindBtn.Text = "Pressione..."
+        bindBtn.BackgroundColor3 = Color3.fromRGB(140, 60, 60)
+        
+        local connection
+        connection = UserInputService.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                toggleKey = input.KeyCode
+                bindBtn.Text = toggleKey.Name
+                bindBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 180)
+                listeningForKey = false
+                connection:Disconnect()
             end
         end)
     end
+end)
+
+-- Anti-AFK
+local vu = game:GetService("VirtualUser")
+player.Idled:Connect(function()
+    if states.antiAfk then
+        vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    end
+end)
+
+addToggle(tabOpcoes, "Anti-AFK", "Evita timeout por inatividade", true, function(on)
+    states.antiAfk = on
 end)
 
 local soundBtn = Instance.new("TextButton")
 soundBtn.Size = UDim2.new(1, -5, 0, 34)
 soundBtn.BackgroundColor3 = Color3.fromRGB(60, 40, 90)
 soundBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-soundBtn.Text = "Tocar Som de Alerta (Soundboard)"
+soundBtn.Text = "Tocar Som de Alerta"
 soundBtn.TextSize = 11
 soundBtn.Font = Enum.Font.SourceSansBold
 soundBtn.Parent = tabOpcoes
@@ -572,6 +769,7 @@ unloadBtn.Font = Enum.Font.SourceSansBold
 unloadBtn.Parent = tabOpcoes
 Instance.new("UICorner", unloadBtn).CornerRadius = UDim.new(0, 6)
 unloadBtn.MouseButton1Click:Connect(function()
+    for _, p in ipairs(Players:GetPlayers()) do removeESP(p) end
     sg:Destroy()
 end)
 
@@ -605,17 +803,21 @@ task.spawn(function()
     end
 end)
 
+-- Loop Global Otimizado
 RunService.RenderStepped:Connect(function(dt)
-    if states.noclip and character then
-        for _, p in ipairs(character:GetDescendants()) do
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+    if states.noclip and char then
+        for _, p in ipairs(char:GetDescendants()) do
             if p:IsA("BasePart") then p.CanCollide = false end
         end
     end
 
-    if states.walkSpeed and humanoid then humanoid.WalkSpeed = speedVal end
+    if states.walkSpeed and hum then hum.WalkSpeed = speedVal end
 
-    if states.boatFly and humanoid and humanoid.SeatPart then
-        local seat = humanoid.SeatPart
+    if states.boatFly and hum and hum.SeatPart then
+        local seat = hum.SeatPart
         if seat:IsA("VehicleSeat") or seat:IsA("Seat") then
             local model = seat.Parent
             if model and model:IsA("Model") then
@@ -626,8 +828,8 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    if states.vehicleBounce and humanoid and humanoid.SeatPart then
-        local seat = humanoid.SeatPart
+    if states.vehicleBounce and hum and hum.SeatPart then
+        local seat = hum.SeatPart
         if seat.Parent:IsA("Model") then
             local primary = seat.Parent.PrimaryPart or seat
             primary.AssemblyLinearVelocity = primary.AssemblyLinearVelocity + Vector3.new(0, 35, 0)
@@ -649,8 +851,14 @@ RunService.RenderStepped:Connect(function(dt)
     end
 
     if states.aimbot then
-        local targetHead = getClosestPlayer()
+        local targetHead = getClosestPlayerHead()
         if targetHead then camera.CFrame = CFrame.new(camera.CFrame.Position, targetHead.Position) end
+    end
+
+    if states.following and followTarget and followTarget.Character and followTarget.Character:FindFirstChild("HumanoidRootPart") then
+        if hum and hum.Health > 0 then
+            hum:MoveTo(followTarget.Character.HumanoidRootPart.Position)
+        end
     end
 
     if states.spectating and spectateTarget then
@@ -669,17 +877,10 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 
 UserInputService.JumpRequest:Connect(function()
-    if states.infiniteJump and humanoid then
-        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    if states.infiniteJump and hum then
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
     end
 end)
 
-player.CharacterAdded:Connect(function(c)
-    character = c
-    humanoid = c:WaitForChild("Humanoid")
-    rootPart = c:WaitForChild("HumanoidRootPart")
-    if states.superPulo then humanoid.UseJumpPower = true humanoid.JumpPower = jumpVal end
-    if states.walkSpeed then humanoid.WalkSpeed = speedVal end
-end)
-
-print("Menu do Açaí [No-Lag Edition] Carregado com Sucesso!")
+print("Menu do Açaí [Instant Load + Keybind] Carregado com Sucesso!")
