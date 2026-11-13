@@ -1,4 +1,4 @@
---// MENU DO AÇAÍ COMPLETO (UPGRADED V2) - Xeno Executor
+--// MENU DO AÇAÍ COMPLETO (ULTRA STABLE NO-LAG) - Xeno Executor
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
@@ -12,6 +12,7 @@ local SoundService = game:GetService("SoundService")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
 local camera = Workspace.CurrentCamera
 
 -- Bypass seguro para o Xeno Executor (gethui)
@@ -56,7 +57,6 @@ local states = {
 local jumpVal = 100
 local speedVal = 16
 local boatVal = 150
-local fovVal = camera.FieldOfView
 local spectateTarget = nil
 
 -- Remove hub anterior se já existir
@@ -113,18 +113,11 @@ titleBar.Parent = frame
 
 Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
 
-local tFix = Instance.new("Frame")
-tFix.Size = UDim2.new(1, 0, 0.5, 0)
-tFix.Position = UDim2.new(0, 0, 0.5, 0)
-tFix.BackgroundColor3 = Color3.fromRGB(80, 40, 180)
-tFix.BorderSizePixel = 0
-tFix.Parent = titleBar
-
 local tLabel = Instance.new("TextLabel")
 tLabel.Size = UDim2.new(1, -40, 1, 0)
 tLabel.Position = UDim2.new(0, 12, 0, 0)
 tLabel.BackgroundTransparency = 1
-tLabel.Text = "Menu do Açaí [Pro Edition]"
+tLabel.Text = "Menu do Açaí [No-Lag Edition]"
 tLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 tLabel.TextSize = 14
 tLabel.Font = Enum.Font.SourceSansBold
@@ -210,7 +203,7 @@ local function createTab(name, posY)
     return page
 end
 
--- Criando as Abas (Com a nova aba "Farm" e sem teleporte)
+-- Criando as Abas
 local tabPlayer   = createTab("Player", 5)
 local tabVeiculo  = createTab("Veículo", 36)
 local tabVisual   = createTab("Visual", 67)
@@ -349,7 +342,6 @@ local function addSlider(parentPage, nome, minV, maxV, defV, cb)
         local v = math.floor(minV + (maxV - minV) * r)
         fill.Size = UDim2.new(r, 0, 1, 0)
         knob.Position = UDim2.new(r, 0, 0.5, 0)
-        lbl.Text = nome .. ": " + v
         lbl.Text = nome .. ": " .. v
         cb(v)
     end
@@ -369,130 +361,53 @@ local function addSlider(parentPage, nome, minV, maxV, defV, cb)
     end)
 end
 
--- Funções ESP básicas
-local function removeESP(p)
-    if p.Character then
-        local h = p.Character:FindFirstChild("AcaiHighlight")
-        if h then h:Destroy() end
-        local t = p.Character:FindFirstChild("AcaiTag")
-        if t then t:Destroy() end
-    end
-end
-
-local function addESP(p)
-    if p == player then return end
-    p.CharacterAdded:Connect(function(char)
-        task.wait(1)
-        if states.espPlayers then
-            removeESP(p)
-            local highlight = Instance.new("Highlight")
-            highlight.Name = "AcaiHighlight"
-            highlight.Adornee = char
-            highlight.FillColor = Color3.fromRGB(138, 43, 226)
-            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-            highlight.FillTransparency = 0.5
-            highlight.Parent = char
-
-            local head = char:WaitForChild("Head", 3)
-            if head then
-                local billboard = Instance.new("BillboardGui")
-                billboard.Name = "AcaiTag"
-                billboard.Size = UDim2.new(0, 100, 0, 40)
-                billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-                billboard.AlwaysOnTop = true
-                billboard.Adornee = head
-                billboard.Parent = char
-
-                local nameLabel = Instance.new("TextLabel")
-                nameLabel.Size = UDim2.new(1, 0, 1, 0)
-                nameLabel.BackgroundTransparency = 1
-                nameLabel.Text = p.Name
-                nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                nameLabel.TextSize = 12
-                nameLabel.Font = Enum.Font.SourceSansBold
-                nameLabel.TextStrokeTransparency = 0.3
-                nameLabel.Parent = billboard
-            end
-        end
-    end)
-end
-
-for _, p in ipairs(Players:GetPlayers()) do addESP(p) end
-Players.PlayerAdded:Connect(addESP)
-Players.PlayerRemoving:Connect(removeESP)
-
--- Aimbot Target Finder
-local function getClosestPlayer()
-    local closestTarget = nil
+-- Busca leve e otimizada de mobs
+local function getClosestMob()
+    local closestMob = nil
     local shortestDist = math.huge
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
-            local hum = p.Character:FindFirstChildOfClass("Humanoid")
-            if hum and hum.Health > 0 then
-                local pos, onScreen = camera:WorldToViewportPoint(p.Character.Head.Position)
-                if onScreen then
-                    local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)).Magnitude
+    
+    for _, v in ipairs(Workspace:GetChildren()) do
+        if v:IsA("Model") and v ~= character then
+            local hum = v:FindFirstChildOfClass("Humanoid")
+            local hrp = v:FindFirstChild("HumanoidRootPart")
+            if hum and hrp and hum.Health > 0 then
+                local isPlayerChar = Players:GetPlayerFromCharacter(v)
+                if not isPlayerChar then
+                    local dist = (rootPart.Position - hrp.Position).Magnitude
                     if dist < shortestDist then
                         shortestDist = dist
-                        closestTarget = p.Character.Head
+                        closestMob = hrp
                     end
                 end
             end
         end
     end
-    return closestTarget
+    return closestMob
 end
 
 -- === POPULANDO AS ABAS ===
 
 -- 1. Aba Player
-addToggle(tabPlayer, "Noclip", "Atravessa paredes", function(on)
-    states.noclip = on
-end)
-
+addToggle(tabPlayer, "Noclip", "Atravessa paredes", function(on) states.noclip = on end)
 addToggle(tabPlayer, "Super Pulo", "Ativa pulo alto", function(on)
     states.superPulo = on
-    if humanoid then
-        humanoid.UseJumpPower = true
-        humanoid.JumpPower = on and jumpVal or 50
-    end
+    if humanoid then humanoid.UseJumpPower = true humanoid.JumpPower = on and jumpVal or 50 end
 end)
-
 addSlider(tabPlayer, "Força do Pulo", 50, 300, jumpVal, function(v)
     jumpVal = v
     if states.superPulo and humanoid then humanoid.JumpPower = v end
 end)
-
-addToggle(tabPlayer, "WalkSpeed", "Aumenta a velocidade", function(on)
-    states.walkSpeed = on
-end)
-
-addSlider(tabPlayer, "Velocidade", 16, 300, speedVal, function(v)
-    speedVal = v
-end)
-
-addToggle(tabPlayer, "Pulo Infinito", "Pula várias vezes no ar", function(on)
-    states.infiniteJump = on
-end)
+addToggle(tabPlayer, "WalkSpeed", "Aumenta a velocidade", function(on) states.walkSpeed = on end)
+addSlider(tabPlayer, "Velocidade", 16, 300, speedVal, function(v) speedVal = v end)
+addToggle(tabPlayer, "Pulo Infinito", "Pula várias vezes no ar", function(on) states.infiniteJump = on end)
 
 -- 2. Aba Veículo
-addToggle(tabVeiculo, "Boat Fly", "Faz o barco voar e acelerar", function(on)
-    states.boatFly = on
-end)
-
-addSlider(tabVeiculo, "Velocidade do Barco", 50, 300, boatVal, function(v)
-    boatVal = v
-end)
-
-addToggle(tabVeiculo, "Impulso de Veículo", "Faz o veículo pular/destravar", function(on)
-    states.vehicleBounce = on
-end)
+addToggle(tabVeiculo, "Boat Fly", "Faz o barco voar e acelerar", function(on) states.boatFly = on end)
+addSlider(tabVeiculo, "Velocidade do Barco", 50, 300, 150, function(v) end)
+addToggle(tabVeiculo, "Impulso de Veículo", "Faz o veículo pular/destravar", function(on) states.vehicleBounce = on end)
 
 -- 3. Aba Visual
-addToggle(tabVisual, "ESP Players", "Mostra jogadores nas paredes", function(on)
-    states.espPlayers = on
-end)
-
+addToggle(tabVisual, "ESP Players", "Mostra jogadores nas paredes", function(on) states.espPlayers = on end)
 addToggle(tabVisual, "Fullbright", "Iluminação máxima", function(on)
     states.fullbright = on
     if on then
@@ -506,16 +421,10 @@ addToggle(tabVisual, "Fullbright", "Iluminação máxima", function(on)
         Lighting.GlobalShadows = origShadows
     end
 end)
-
-addToggle(tabVisual, "Remover Fog", "Remove névoa completamente", function(on)
-    states.noFog = on
-end)
+addToggle(tabVisual, "Remover Fog", "Remove névoa completamente", function(on) states.noFog = on end)
 
 -- 4. Aba PvP
-addToggle(tabPvp, "Aimbot", "Trava a câmera no alvo mais próximo", function(on)
-    states.aimbot = on
-end)
-
+addToggle(tabPvp, "Aimbot", "Trava a câmera no alvo mais próximo", function(on) states.aimbot = on end)
 addToggle(tabPvp, "Aumentar Hitbox", "Facilita acertar inimigos", function(on)
     states.hitbox = on
     for _, p in ipairs(Players:GetPlayers()) do
@@ -528,12 +437,36 @@ addToggle(tabPvp, "Aumentar Hitbox", "Facilita acertar inimigos", function(on)
     end
 end)
 
--- 5. Aba Farm (Auto-Farm / Aura movido para cá)
-addToggle(tabFarm, "Auto-Farm / Aura", "Ataca alvos próximos automaticamente", function(on)
+-- 5. Aba Farm (Movimentação leve sem travamentos)
+addToggle(tabFarm, "Auto-Farm Leve", "Caminha até os monstros sem travar", function(on)
     states.autoFarm = on
+    task.spawn(function()
+        while states.autoFarm do
+            task.wait(0.5) -- Intervalo seguro para evitar lag e travamentos
+            pcall(function()
+                if character and rootPart and humanoid and humanoid.Health > 0 then
+                    -- Procura e interage com missões próximas
+                    for _, obj in ipairs(Workspace:GetChildren()) do
+                        if obj:IsA("ProximityPrompt") and obj.Parent then
+                            local parentPart = obj.Parent
+                            if parentPart:IsA("BasePart") and (parentPart.Position - rootPart.Position).Magnitude < 15 then
+                                fireproximityprompt(obj)
+                            end
+                        end
+                    end
+
+                    -- Move até o mob de forma suave
+                    local mobHrp = getClosestMob()
+                    if mobHrp and (mobHrp.Position - rootPart.Position).Magnitude < 80 then
+                        humanoid:MoveTo(mobHrp.Position)
+                    end
+                end
+            end)
+        end
+    end)
 end)
 
--- 6. Aba Spectate Corrigida
+-- 6. Aba Spectate
 local function refreshSpectateList()
     for _, child in ipairs(tabSpectate:GetChildren()) do
         if child:IsA("TextButton") and child.Name ~= "StopSpec" then child:Destroy() end
@@ -583,10 +516,7 @@ Players.PlayerAdded:Connect(refreshSpectateList)
 Players.PlayerRemoving:Connect(refreshSpectateList)
 
 -- 7. Aba Opções
-addSlider(tabOpcoes, "Ajustar FOV", 70, 120, math.floor(camera.FieldOfView), function(v)
-    camera.FieldOfView = v
-end)
-
+addSlider(tabOpcoes, "Ajustar FOV", 70, 120, math.floor(camera.FieldOfView), function(v) camera.FieldOfView = v end)
 addToggle(tabOpcoes, "Anti-AFK", "Evita timeout por inatividade", function(on)
     states.antiAfk = on
     if on then
@@ -610,7 +540,6 @@ soundBtn.TextSize = 11
 soundBtn.Font = Enum.Font.SourceSansBold
 soundBtn.Parent = tabOpcoes
 Instance.new("UICorner", soundBtn).CornerRadius = UDim.new(0, 6)
-
 soundBtn.MouseButton1Click:Connect(function()
     local s = Instance.new("Sound")
     s.SoundId = "rbxassetid://9060864272"
@@ -646,7 +575,7 @@ unloadBtn.MouseButton1Click:Connect(function()
     sg:Destroy()
 end)
 
--- === RODAPÉ DE STATUS (FPS, Ping, Tempo Online) ===
+-- === RODAPÉ DE STATUS ===
 local footer = Instance.new("Frame")
 footer.Size = UDim2.new(1, 0, 0, 26)
 footer.Position = UDim2.new(0, 0, 1, -26)
@@ -667,10 +596,7 @@ infoLabel.Parent = footer
 local startTime = tick()
 local frameCount = 0
 local fps = 60
-RunService.RenderStepped:Connect(function()
-    frameCount = frameCount + 1
-end)
-
+RunService.RenderStepped:Connect(function() frameCount = frameCount + 1 end)
 task.spawn(function()
     while true do
         task.wait(1)
@@ -686,9 +612,7 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    if states.walkSpeed and humanoid then
-        humanoid.WalkSpeed = speedVal
-    end
+    if states.walkSpeed and humanoid then humanoid.WalkSpeed = speedVal end
 
     if states.boatFly and humanoid and humanoid.SeatPart then
         local seat = humanoid.SeatPart
@@ -714,23 +638,27 @@ RunService.RenderStepped:Connect(function(dt)
         Lighting.FogEnd = 9999999
         Lighting.FogStart = 0
         Lighting.GlobalShadows = false
+        for _, v in ipairs(Lighting:GetChildren()) do
+            if v:IsA("Atmosphere") or v:IsA("Clouds") then
+                v:Destroy()
+            elseif v:IsA("ColorCorrectionEffect") then
+                v.TintColor = Color3.fromRGB(255, 255, 255)
+                v.Saturation = 0
+            end
+        end
     end
 
     if states.aimbot then
         local targetHead = getClosestPlayer()
-        if targetHead then
-            camera.CFrame = CFrame.new(camera.CFrame.Position, targetHead.Position)
-        end
+        if targetHead then camera.CFrame = CFrame.new(camera.CFrame.Position, targetHead.Position) end
     end
 
-    -- Lógica corrigida do Spectate para fixar perfeitamente no alvo
     if states.spectating and spectateTarget then
         if spectateTarget.Character and spectateTarget.Character:FindFirstChildOfClass("Humanoid") then
             camera.CameraSubject = spectateTarget.Character:FindFirstChildOfClass("Humanoid")
         end
     end
 
-    -- Atualiza o painel de status
     local elapsed = math.floor(tick() - startTime)
     local mins = math.floor(elapsed / 60)
     local secs = elapsed % 60
@@ -749,8 +677,9 @@ end)
 player.CharacterAdded:Connect(function(c)
     character = c
     humanoid = c:WaitForChild("Humanoid")
+    rootPart = c:WaitForChild("HumanoidRootPart")
     if states.superPulo then humanoid.UseJumpPower = true humanoid.JumpPower = jumpVal end
     if states.walkSpeed then humanoid.WalkSpeed = speedVal end
 end)
 
-print("Menu do Açaí [Pro Edition V2] Carregado com Sucesso!")
+print("Menu do Açaí [No-Lag Edition] Carregado com Sucesso!")
