@@ -1,4 +1,4 @@
---// HUB COMPLETO FINAL - Anti-Fog Profundo (Xeno Executor)
+--// MENU DO AÇAÍ - Xeno Executor
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
@@ -43,24 +43,24 @@ local boatVal = 150
 
 -- Remove hub anterior se já existir
 pcall(function()
-    if guiParent:FindFirstChild("LightHubBypass") then
-        guiParent.LightHubBypass:Destroy()
+    if guiParent:FindFirstChild("MenuDoAcaiHub") then
+        guiParent.MenuDoAcaiHub:Destroy()
     end
 end)
 
 local sg = Instance.new("ScreenGui")
-sg.Name = "LightHubBypass"
+sg.Name = "MenuDoAcaiHub"
 sg.ResetOnSpawn = false
 sg.Parent = guiParent
 
--- Botão Flutuante "HUB" para abrir/fechar o menu no mobile
+-- Botão Flutuante "AÇAÍ" para abrir/fechar o menu no mobile
 local openBtn = Instance.new("TextButton")
 openBtn.Size = UDim2.new(0, 48, 0, 48)
 openBtn.Position = UDim2.new(0.02, 0, 0.2, 0)
 openBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 180)
 openBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-openBtn.Text = "HUB"
-openBtn.TextSize = 13
+openBtn.Text = "AÇAÍ"
+openBtn.TextSize = 12
 openBtn.Font = Enum.Font.SourceSansBold
 openBtn.Active = true
 openBtn.Draggable = true
@@ -106,7 +106,7 @@ local tLabel = Instance.new("TextLabel")
 tLabel.Size = UDim2.new(1, -40, 1, 0)
 tLabel.Position = UDim2.new(0, 10, 0, 0)
 tLabel.BackgroundTransparency = 1
-tLabel.Text = "Cheat Hub - Blox Fruits"
+tLabel.Text = "Menu do Açaí"
 tLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 tLabel.TextSize = 14
 tLabel.Font = Enum.Font.SourceSansBold
@@ -133,7 +133,7 @@ local info = Instance.new("TextLabel")
 info.Size = UDim2.new(1, 0, 0, 14)
 info.Position = UDim2.new(0, 0, 0, 44)
 info.BackgroundTransparency = 1
-info.Text = "Clique em HUB para abrir/minimizar"
+info.Text = "Clique em AÇAÍ para abrir/minimizar"
 info.TextColor3 = Color3.fromRGB(110, 110, 140)
 info.TextSize = 10
 info.Font = Enum.Font.SourceSans
@@ -307,7 +307,7 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    -- Boat Fly corrigido
+    -- Boat Fly
     if states.boatFly and humanoid and humanoid.SeatPart then
         local seat = humanoid.SeatPart
         if seat:IsA("VehicleSeat") or seat:IsA("Seat") then
@@ -320,16 +320,15 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    -- Anti-Fog Profundo por Frame (Limpa Lighting e Workspace de qualquer neblina)
+    -- Anti-Fog Profundo por Frame
     if states.noFog then
         Lighting.FogEnd = 9999999
         Lighting.FogStart = 0
         Lighting.GlobalShadows = false
         
-        -- Remove qualquer atmosfera ou nuvem em Lighting
         for _, v in ipairs(Lighting:GetChildren()) do
             if v:IsA("Atmosphere") or v:IsA("Clouds") then
-                v:Destroy() -- Destrói o objeto para o jogo não conseguir recriar
+                v:Destroy()
             elseif v:IsA("ColorCorrectionEffect") then
                 v.TintColor = Color3.fromRGB(255, 255, 255)
                 v.Saturation = 0
@@ -414,4 +413,4 @@ toggle("Remover Fog", "Remove nevoa completamente", Y, function(on)
     end
 end)
 
-print("Cheat Hub Definitivo com Anti-Fog Profundo Carregado!")
+print("Menu do Açaí carregado com sucesso!")
