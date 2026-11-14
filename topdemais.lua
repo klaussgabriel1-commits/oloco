@@ -1,4 +1,4 @@
---// MENU DO AÇAÍ [GOD-TIER UI CUSTOMIZER EDITION] - Xeno Executor
+--// MENU DO AÇAÍ [LIGHTWEIGHT OPTIMIZED EDITION] - Xeno Executor
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
@@ -32,24 +32,27 @@ local states = {
     superPulo       = false,
     walkSpeed       = false,
     infiniteJump    = false,
+    fly             = false,
     waterWalk       = false,
     boatFly         = false,
     fullbright      = false,
     noFog           = false,
     espPlayers      = false,
     espBoss         = false,
+    espChests       = false,
     bossDistLimit   = true,
     notifyBoss      = true,
     notifyFruit     = true,
     hitbox          = false,
     aimbot          = false,
     autoFarm        = false,
+    autoCollect     = false,
+    antiAfk         = true,
     spectating      = false,
     vehicleBounce   = false,
     following       = false,
     menuDraggable   = true,
     showOpenButton  = true,
-    autoSaveUI      = true,
 }
 
 local toggleCallbacks = {}
@@ -61,6 +64,7 @@ local jumpVal = 100
 local speedVal = 16
 local boatVal = 150
 local bossDistVal = 1000
+local flySpeedVal = 50
 
 -- Valores de Customização do Menu
 local menuTransVal = 0
@@ -75,7 +79,7 @@ local spectateTarget = nil
 local followTarget = nil
 local toggleKey = Enum.KeyCode.Delete
 
-local configFileName = "MenuDoAcai_GodTierUI.json"
+local configFileName = "MenuDoAcai_OptimizedConfig.json"
 
 local function sendNotification(title, text)
     task.spawn(function()
@@ -89,7 +93,7 @@ local function sendNotification(title, text)
     end)
 end
 
-local function saveConfig(silent)
+local function saveConfig()
     pcall(function()
         if writefile then
             local data = {
@@ -98,6 +102,7 @@ local function saveConfig(silent)
                 speedVal = speedVal,
                 boatVal = boatVal,
                 bossDistVal = bossDistVal,
+                flySpeedVal = flySpeedVal,
                 menuTransVal = menuTransVal,
                 menuWidthVal = menuWidthVal,
                 menuHeightVal = menuHeightVal,
@@ -108,17 +113,9 @@ local function saveConfig(silent)
                 toggleKey = toggleKey.Name
             }
             writefile(configFileName, HttpService:JSONEncode(data))
-            if not silent then
-                sendNotification("Menu do Açaí", "Configurações e Layout salvos!")
-            end
+            sendNotification("Menu do Açaí", "Configurações salvas!")
         end
     end)
-end
-
-local function triggerAutoSave()
-    if states.autoSaveUI then
-        saveConfig(true)
-    end
 end
 
 local function loadConfig()
@@ -136,6 +133,7 @@ local function loadConfig()
                 if data.speedVal then speedVal = data.speedVal end
                 if data.boatVal then boatVal = data.boatVal end
                 if data.bossDistVal then bossDistVal = data.bossDistVal end
+                if data.flySpeedVal then flySpeedVal = data.flySpeedVal end
                 if data.menuTransVal then menuTransVal = data.menuTransVal end
                 if data.menuWidthVal then menuWidthVal = data.menuWidthVal end
                 if data.menuHeightVal then menuHeightVal = data.menuHeightVal end
@@ -159,7 +157,7 @@ local function deleteConfig()
     pcall(function()
         if delfile and isfile and isfile(configFileName) then
             delfile(configFileName)
-            sendNotification("Menu do Açaí", "Save apagado! Reabra o menu para resetar.")
+            sendNotification("Menu do Açaí", "Save apagado!")
         end
     end)
 end
@@ -204,7 +202,7 @@ frame.BackgroundTransparency = menuTransVal
 frame.BorderSizePixel = 0
 frame.Active = true
 frame.Draggable = states.menuDraggable
-frame.Visible = false
+frame.Visible = true 
 frame.Parent = sg
 table.insert(bgElements, frame)
 
@@ -240,7 +238,7 @@ local tLabel = Instance.new("TextLabel")
 tLabel.Size = UDim2.new(1, -40, 1, 0)
 tLabel.Position = UDim2.new(0, 12, 0, 0)
 tLabel.BackgroundTransparency = 1
-tLabel.Text = "Menu do Açaí [God-Tier UI]"
+tLabel.Text = "Menu do Açaí [Optimized]"
 tLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 tLabel.TextSize = 14
 tLabel.Font = Enum.Font.SourceSansBold
@@ -447,7 +445,6 @@ local function addToggle(parentPage, stateKey, nome, desc, cb)
         states[stateKey] = on
         updateVisual(on)
         cb(on)
-        triggerAutoSave()
     end)
 
     if stateKey then
@@ -470,10 +467,7 @@ UserInputService.InputChanged:Connect(function(inp)
 end)
 UserInputService.InputEnded:Connect(function(inp)
     if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-        if activeDrag then
-            activeDrag = nil
-            triggerAutoSave()
-        end
+        activeDrag = nil
     end
 end)
 
@@ -546,6 +540,7 @@ local function addSlider(parentPage, nome, minV, maxV, defV, cb)
     end)
 end
 
+-- === ESP SISTEMAS OTIMIZADOS ===
 local function removeESP(p)
     if p.Character then
         local h = p.Character:FindFirstChild("AcaiHighlight")
@@ -599,13 +594,13 @@ Players.PlayerAdded:Connect(addESP)
 Players.PlayerRemoving:Connect(removeESP)
 for _, p in ipairs(Players:GetPlayers()) do addESP(p) end
 
--- === LOOP LEVE PARA BOSSES E FRUTAS ===
+-- === LOOP LEVE COM THROTTLE (INTERVALO DE ESPAÇAMENTO PARA NÃO TRAVAR) ===
 local notifiedBosses = {}
 local notifiedFruits = {}
 
 task.spawn(function()
     while true do
-        task.wait(2)
+        task.wait(3) -- Aumentado para 3 segundos para aliviar o processador
         pcall(function()
             local char = player.Character
             local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -676,6 +671,30 @@ task.spawn(function()
                         notifiedFruits[obj] = true
                         sendNotification("FRUTA SPAWNADA!", "Fruta: " .. obj.Name)
                     end
+                end
+            end
+
+            -- Verificação otimizada de baús
+            if states.espChests then
+                for _, desc in ipairs(Workspace:GetChildren()) do
+                    if desc:IsA("Model") or desc:IsA("BasePart") then
+                        if string.find(string.lower(desc.Name), "chest") or string.find(string.lower(desc.Name), "baú") then
+                            if not desc:FindFirstChild("ChestHighlight") then
+                                local hl = Instance.new("Highlight")
+                                hl.Name = "ChestHighlight"
+                                hl.Adornee = desc
+                                hl.FillColor = Color3.fromRGB(255, 215, 0)
+                                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                                hl.FillTransparency = 0.4
+                                hl.Parent = desc
+                            end
+                        end
+                    end
+                end
+            else
+                for _, desc in ipairs(Workspace:GetChildren()) do
+                    local hl = desc:FindFirstChild("ChestHighlight")
+                    if hl then hl:Destroy() end
                 end
             end
         end)
@@ -762,6 +781,9 @@ addToggle(tabPlayer, "walkSpeed", "WalkSpeed", "Aumenta a velocidade", function(
 addSlider(tabPlayer, "Velocidade", 16, 300, speedVal, function(v) speedVal = v end)
 addToggle(tabPlayer, "infiniteJump", "Pulo Infinito", "Pula várias vezes no ar", function(on) states.infiniteJump = on end)
 
+addToggle(tabPlayer, "fly", "Fly (Voo Livre)", "Voa livremente pelo mapa", function(on) states.fly = on end)
+addSlider(tabPlayer, "Velocidade do Fly", 20, 200, flySpeedVal, function(v) flySpeedVal = v end)
+
 addToggle(tabVeiculo, "boatFly", "Boat Fly", "Faz o barco voar e acelerar", function(on) states.boatFly = on end)
 addSlider(tabVeiculo, "Velocidade do Barco", 50, 300, boatVal, function(v) boatVal = v end)
 addToggle(tabVeiculo, "vehicleBounce", "Impulso de Veículo", "Faz o veículo pular/destravar", function(on) states.vehicleBounce = on end)
@@ -775,6 +797,7 @@ addToggle(tabVisual, "espPlayers", "ESP Players", "Mostra jogadores nas paredes"
     end
 end)
 addToggle(tabVisual, "espBoss", "ESP Boss (40k+ HP)", "Destaca chefes com 40k+ de vida", function(on) states.espBoss = on end)
+addToggle(tabVisual, "espChests", "ESP Baús / Itens", "Destaca baús e itens pelo mapa", function(on) states.espChests = on end)
 addToggle(tabVisual, "bossDistLimit", "Limitar Distância ESP Boss", "Ativa limite de distância para o ESP", function(on) states.bossDistLimit = on end)
 addSlider(tabVisual, "Distância Máx Boss", 100, 5000, bossDistVal, function(v) bossDistVal = v end)
 addToggle(tabVisual, "fullbright", "Fullbright", "Iluminação máxima", function(on)
@@ -858,11 +881,11 @@ refreshFollowList()
 Players.PlayerAdded:Connect(refreshFollowList)
 Players.PlayerRemoving:Connect(refreshFollowList)
 
-addToggle(tabFarm, "autoFarm", "Auto-Farm por Nível", "Pega missão e farma mobs adequados ao seu nível", function(on)
+addToggle(tabFarm, "autoFarm", "Auto-Farm por Nível", "Pega missão e farma mobs adequados", function(on)
     states.autoFarm = on
     task.spawn(function()
         while states.autoFarm do
-            task.wait(0.3)
+            task.wait(0.4) -- Leve espaçamento para rodar fluido
             pcall(function()
                 local char = player.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -889,25 +912,89 @@ addToggle(tabFarm, "autoFarm", "Auto-Farm por Nível", "Pega missão e farma mob
     end)
 end)
 
+addToggle(tabFarm, "autoCollect", "Coleta Automática (Magnet)", "Puxa moedas e drops com intervalo leve", function(on)
+    states.autoCollect = on
+    task.spawn(function()
+        while states.autoCollect do
+            task.wait(0.8) -- Intervalo otimizado para evitar travamentos de física
+            pcall(function()
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    for _, obj in ipairs(Workspace:GetChildren()) do
+                        if obj:IsA("Part") or obj:IsA("MeshPart") or obj:IsA("Model") then
+                            if string.find(string.lower(obj.Name), "coin") or string.find(string.lower(obj.Name), "drop") or string.find(string.lower(obj.Name), "gem") then
+                                local part = obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")) or obj
+                                if part and (hrp.Position - part.Position).Magnitude < 150 then
+                                    part.CFrame = hrp.CFrame
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+end)
+
+addToggle(tabFarm, "antiAfk", "Anti-AFK Automático", "Impede desconexão por inatividade", function(on)
+    states.antiAfk = on
+end)
+
+local vu = game:GetService("VirtualUser")
+player.Idled:Connect(function()
+    if states.antiAfk then
+        vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end
+end)
+
 local function refreshSpectateList()
     task.spawn(function()
         for _, child in ipairs(tabSpectate:GetChildren()) do
-            if child:IsA("TextButton") and child.Name ~= "StopSpec" then child:Destroy() end
+            if child:IsA("Frame") or (child:IsA("TextButton") and child.Name ~= "StopSpec") then child:Destroy() end
         end
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= player then
+                local pFrame = Instance.new("Frame")
+                pFrame.Size = UDim2.new(1, -5, 0, 32)
+                pFrame.BackgroundTransparency = 1
+                pFrame.Parent = tabSpectate
+
                 local pBtn = Instance.new("TextButton")
-                pBtn.Size = UDim2.new(1, -5, 0, 32)
+                pBtn.Size = UDim2.new(0.68, 0, 1, 0)
                 pBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
                 pBtn.TextColor3 = Color3.fromRGB(220, 220, 255)
                 pBtn.Text = "Espiar: " .. p.Name
                 pBtn.TextSize = 11
                 pBtn.Font = Enum.Font.SourceSansBold
-                pBtn.Parent = tabSpectate
+                pBtn.Parent = pFrame
                 Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0, 6)
+
+                local tpBtn = Instance.new("TextButton")
+                tpBtn.Size = UDim2.new(0.3, 0, 1, 0)
+                tpBtn.Position = UDim2.new(0.7, 4, 0, 0)
+                tpBtn.BackgroundColor3 = Color3.fromRGB(100, 50, 150)
+                tpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                tpBtn.Text = "Ir até lá"
+                tpBtn.TextSize = 11
+                tpBtn.Font = Enum.Font.SourceSansBold
+                tpBtn.Parent = pFrame
+                Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 6)
+
                 pBtn.MouseButton1Click:Connect(function()
                     spectateTarget = p
                     states.spectating = true
+                end)
+
+                tpBtn.MouseButton1Click:Connect(function()
+                    pcall(function()
+                        if p.Character and p.Character:FindFirstChild("HumanoidRootPart") and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            player.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
+                            sendNotification("Teleporte", "Você foi até " .. p.Name)
+                        end
+                    end)
                 end)
             end
         end
@@ -935,11 +1022,7 @@ refreshSpectateList()
 Players.PlayerAdded:Connect(refreshSpectateList)
 Players.PlayerRemoving:Connect(refreshSpectateList)
 
--- === ABA MENU (CUSTOMIZAÇÃO GOD-TIER) ===
-addToggle(tabMenu, "autoSaveUI", "Auto-Save Layout", "Salva mudanças do menu automaticamente", function(on)
-    states.autoSaveUI = on
-end)
-
+-- === ABA MENU ===
 addToggle(tabMenu, "menuDraggable", "Menu Arrastável", "Permite mover a janela livremente", function(on)
     states.menuDraggable = on
     frame.Draggable = on
@@ -990,41 +1073,7 @@ addSlider(tabMenu, "Tamanho Botão Flutuante", 32, 75, openBtnSizeVal, function(
     openBtn.Size = UDim2.new(0, v, 0, v)
 end)
 
--- Seção de Cor de Fundo
-local bgLabel = Instance.new("TextLabel")
-bgLabel.Size = UDim2.new(1, -5, 0, 22)
-bgLabel.BackgroundTransparency = 1
-bgLabel.Text = "--- COR DE FUNDO DO PAINEL ---"
-bgLabel.TextColor3 = Color3.fromRGB(150, 150, 180)
-bgLabel.TextSize = 11
-bgLabel.Font = Enum.Font.SourceSansBold
-bgLabel.Parent = tabMenu
-
-local bgThemes = {
-    {Name = "Escuro Padrão", Color = Color3.fromRGB(22, 22, 32)},
-    {Name = "Preto OLED Puro", Color = Color3.fromRGB(8, 8, 12)},
-    {Name = "Cinza Chumbo", Color = Color3.fromRGB(38, 38, 46)},
-    {Name = "Azul Meia-Noite", Color = Color3.fromRGB(15, 22, 38)}
-}
-
-for _, bg in ipairs(bgThemes) do
-    local bBtn = Instance.new("TextButton")
-    bBtn.Size = UDim2.new(1, -5, 0, 30)
-    bBtn.BackgroundColor3 = bg.Color
-    bBtn.TextColor3 = Color3.fromRGB(230, 230, 255)
-    bBtn.Text = "Fundo: " .. bg.Name
-    bBtn.TextSize = 11
-    bBtn.Font = Enum.Font.SourceSansBold
-    bBtn.Parent = tabMenu
-    Instance.new("UICorner", bBtn).CornerRadius = UDim.new(0, 6)
-    
-    bBtn.MouseButton1Click:Connect(function()
-        applyBgColor(bg.Color)
-        triggerAutoSave()
-    end)
-end
-
--- Seção de Cor de Destaque (Temas)
+-- Temas de Destaque
 local themeLabel = Instance.new("TextLabel")
 themeLabel.Size = UDim2.new(1, -5, 0, 22)
 themeLabel.BackgroundTransparency = 1
@@ -1057,7 +1106,6 @@ for _, t in ipairs(themes) do
     
     tBtn.MouseButton1Click:Connect(function()
         applyThemeColor(t.Color)
-        triggerAutoSave()
         sendNotification("Menu do Açaí", "Tema alterado para " .. t.Name)
     end)
 end
@@ -1077,7 +1125,7 @@ saveCfgBtn.TextSize = 11
 saveCfgBtn.Font = Enum.Font.SourceSansBold
 saveCfgBtn.Parent = tabOpcoes
 Instance.new("UICorner", saveCfgBtn).CornerRadius = UDim.new(0, 6)
-saveCfgBtn.MouseButton1Click:Connect(function() saveConfig(false) end)
+saveCfgBtn.MouseButton1Click:Connect(saveConfig)
 
 local loadCfgBtn = Instance.new("TextButton")
 loadCfgBtn.Size = UDim2.new(1, -5, 0, 34)
@@ -1113,7 +1161,7 @@ Instance.new("UICorner", panicBtn).CornerRadius = UDim.new(0, 6)
 
 panicBtn.MouseButton1Click:Connect(function()
     for key, _ in pairs(states) do
-        if key ~= "notifyBoss" and key ~= "notifyFruit" and key ~= "menuDraggable" and key ~= "showOpenButton" and key ~= "autoSaveUI" then
+        if key ~= "notifyBoss" and key ~= "notifyFruit" and key ~= "menuDraggable" and key ~= "showOpenButton" then
             states[key] = false
         end
     end
@@ -1132,8 +1180,8 @@ panicBtn.MouseButton1Click:Connect(function()
 
     for _, p in ipairs(Players:GetPlayers()) do removeESP(p) end
     pcall(function()
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("Highlight") and (obj.Name == "BossHighlight" or obj.Name == "AcaiHighlight") then
+        for _, obj in ipairs(Workspace:GetChildren()) do
+            if obj:IsA("Highlight") and (obj.Name == "BossHighlight" or obj.Name == "AcaiHighlight" or obj.Name == "ChestHighlight") then
                 obj:Destroy()
             elseif obj:IsA("BillboardGui") and (obj.Name == "BossTag" or obj.Name == "AcaiTag") then
                 obj:Destroy()
@@ -1187,7 +1235,6 @@ bindBtn.MouseButton1Click:Connect(function()
                 bindBtn.BackgroundColor3 = currentThemeColor
                 listeningForKey = false
                 connection:Disconnect()
-                triggerAutoSave()
             end
         end)
     end
@@ -1268,9 +1315,11 @@ task.spawn(function()
     end
 end)
 
+-- Loop principal otimizado
 RunService.RenderStepped:Connect(function(dt)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
     if states.noclip and char then
         for _, p in ipairs(char:GetDescendants()) do
@@ -1279,6 +1328,25 @@ RunService.RenderStepped:Connect(function(dt)
     end
 
     if states.walkSpeed and hum then hum.WalkSpeed = speedVal end
+
+    if states.fly and hrp then
+        local camCF = camera.CFrame
+        local moveDir = Vector3.new(0, 0, 0)
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService:IsKeyDown(Enum.KeyCode.Up) then
+            moveDir = moveDir + camCF.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) or UserInputService:IsKeyDown(Enum.KeyCode.Down) then
+            moveDir = moveDir - camCF.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) or UserInputService:IsKeyDown(Enum.KeyCode.Left) then
+            moveDir = moveDir - camCF.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) or UserInputService:IsKeyDown(Enum.KeyCode.Right) then
+            moveDir = moveDir + camCF.RightVector
+        end
+        hrp.AssemblyLinearVelocity = moveDir * flySpeedVal
+        hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + camCF.LookVector)
+    end
 
     if states.boatFly and hum and hum.SeatPart then
         local seat = hum.SeatPart
@@ -1347,7 +1415,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- Aplica todas as configurações visuais salvas na inicialização
+-- Aplica configurações iniciais visuais
 applyThemeColor(currentThemeColor)
 applyBgColor(currentBgColor)
 applyCornerRadius(menuCornerVal)
@@ -1358,4 +1426,4 @@ frame.Draggable = states.menuDraggable
 openBtn.Visible = states.showOpenButton
 openBtn.Size = UDim2.new(0, openBtnSizeVal, 0, openBtnSizeVal)
 
-print("Menu do Açaí [God-Tier UI] Carregado com Sucesso!")
+print("Menu do Açaí [Optimized Edition] Carregado com Sucesso!")
