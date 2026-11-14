@@ -1,4 +1,4 @@
---// MENU DO AÇAÍ [ULTIMATE AUTO-FARM EDITION] - Xeno Executor
+--// MENU DO AÇAÍ [GOD-TIER UI CUSTOMIZER EDITION] - Xeno Executor
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
@@ -9,6 +9,8 @@ local Workspace = game:GetService("Workspace")
 local TeleportService = game:GetService("TeleportService")
 local SoundService = game:GetService("SoundService")
 local VirtualUser = game:GetService("VirtualUser")
+local StarterGui = game:GetService("StarterGui")
+local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
@@ -26,32 +28,144 @@ local origClockTime  = Lighting.ClockTime
 local origShadows    = Lighting.GlobalShadows
 
 local states = {
-    noclip        = false,
-    superPulo     = false,
-    walkSpeed     = false,
-    infiniteJump  = false,
-    waterWalk     = false,
-    boatFly       = false,
-    fullbright    = false,
-    noFog         = false,
-    espPlayers    = false,
-    hitbox        = false,
-    aimbot        = false,
-    antiAfk       = true,
-    autoFarm      = false,
-    spectating    = false,
-    vehicleBounce = false,
-    following     = false,
+    noclip          = false,
+    superPulo       = false,
+    walkSpeed       = false,
+    infiniteJump    = false,
+    waterWalk       = false,
+    boatFly         = false,
+    fullbright      = false,
+    noFog           = false,
+    espPlayers      = false,
+    espBoss         = false,
+    bossDistLimit   = true,
+    notifyBoss      = true,
+    notifyFruit     = true,
+    hitbox          = false,
+    aimbot          = false,
+    autoFarm        = false,
+    spectating      = false,
+    vehicleBounce   = false,
+    following       = false,
+    menuDraggable   = true,
+    showOpenButton  = true,
+    autoSaveUI      = true,
 }
+
+local toggleCallbacks = {}
+local themeElements = {}
+local bgElements = {}
+local cornerElements = {}
 
 local jumpVal = 100
 local speedVal = 16
 local boatVal = 150
+local bossDistVal = 1000
+
+-- Valores de Customização do Menu
+local menuTransVal = 0
+local menuWidthVal = 460
+local menuHeightVal = 330
+local menuCornerVal = 10
+local openBtnSizeVal = 48
+local currentThemeColor = Color3.fromRGB(80, 40, 180)
+local currentBgColor = Color3.fromRGB(22, 22, 32)
+
 local spectateTarget = nil
 local followTarget = nil
 local toggleKey = Enum.KeyCode.Delete
 
--- Remove hub anterior se já existir
+local configFileName = "MenuDoAcai_GodTierUI.json"
+
+local function sendNotification(title, text)
+    task.spawn(function()
+        pcall(function()
+            StarterGui:SetCore("SendNotification", {
+                Title = title;
+                Text = text;
+                Duration = 3;
+            })
+        end)
+    end)
+end
+
+local function saveConfig(silent)
+    pcall(function()
+        if writefile then
+            local data = {
+                states = states,
+                jumpVal = jumpVal,
+                speedVal = speedVal,
+                boatVal = boatVal,
+                bossDistVal = bossDistVal,
+                menuTransVal = menuTransVal,
+                menuWidthVal = menuWidthVal,
+                menuHeightVal = menuHeightVal,
+                menuCornerVal = menuCornerVal,
+                openBtnSizeVal = openBtnSizeVal,
+                themeColor = {currentThemeColor.R, currentThemeColor.G, currentThemeColor.B},
+                bgColor = {currentBgColor.R, currentBgColor.G, currentBgColor.B},
+                toggleKey = toggleKey.Name
+            }
+            writefile(configFileName, HttpService:JSONEncode(data))
+            if not silent then
+                sendNotification("Menu do Açaí", "Configurações e Layout salvos!")
+            end
+        end
+    end)
+end
+
+local function triggerAutoSave()
+    if states.autoSaveUI then
+        saveConfig(true)
+    end
+end
+
+local function loadConfig()
+    pcall(function()
+        if readfile and isfile and isfile(configFileName) then
+            local content = readfile(configFileName)
+            local data = HttpService:JSONDecode(content)
+            if data then
+                if data.states then
+                    for k, v in pairs(data.states) do
+                        if states[k] ~= nil then states[k] = v end
+                    end
+                end
+                if data.jumpVal then jumpVal = data.jumpVal end
+                if data.speedVal then speedVal = data.speedVal end
+                if data.boatVal then boatVal = data.boatVal end
+                if data.bossDistVal then bossDistVal = data.bossDistVal end
+                if data.menuTransVal then menuTransVal = data.menuTransVal end
+                if data.menuWidthVal then menuWidthVal = data.menuWidthVal end
+                if data.menuHeightVal then menuHeightVal = data.menuHeightVal end
+                if data.menuCornerVal then menuCornerVal = data.menuCornerVal end
+                if data.openBtnSizeVal then openBtnSizeVal = data.openBtnSizeVal end
+                if data.themeColor then
+                    currentThemeColor = Color3.new(data.themeColor[1], data.themeColor[2], data.themeColor[3])
+                end
+                if data.bgColor then
+                    currentBgColor = Color3.new(data.bgColor[1], data.bgColor[2], data.bgColor[3])
+                end
+                if data.toggleKey then
+                    pcall(function() toggleKey = Enum.KeyCode[data.toggleKey] end)
+                end
+            end
+        end
+    end)
+end
+
+local function deleteConfig()
+    pcall(function()
+        if delfile and isfile and isfile(configFileName) then
+            delfile(configFileName)
+            sendNotification("Menu do Açaí", "Save apagado! Reabra o menu para resetar.")
+        end
+    end)
+end
+
+loadConfig()
+
 pcall(function()
     if guiParent:FindFirstChild("MenuDoAcaiHub") then
         guiParent.MenuDoAcaiHub:Destroy()
@@ -63,34 +177,40 @@ sg.Name = "MenuDoAcaiHub"
 sg.ResetOnSpawn = false
 sg.Parent = guiParent
 
--- Botão Flutuante "AÇAÍ" (Mobile)
+-- Botão Flutuante "AÇAÍ"
 local openBtn = Instance.new("TextButton")
-openBtn.Size = UDim2.new(0, 48, 0, 48)
+openBtn.Size = UDim2.new(0, openBtnSizeVal, 0, openBtnSizeVal)
 openBtn.Position = UDim2.new(0.02, 0, 0.2, 0)
-openBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 180)
+openBtn.BackgroundColor3 = currentThemeColor
 openBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 openBtn.Text = "AÇAÍ"
 openBtn.TextSize = 12
 openBtn.Font = Enum.Font.SourceSansBold
 openBtn.Active = true
 openBtn.Draggable = true
+openBtn.Visible = states.showOpenButton
 openBtn.Parent = sg
+table.insert(themeElements, {obj = openBtn, type = "bg"})
 
 Instance.new("UICorner", openBtn).CornerRadius = UDim.new(1, 0)
 
 -- Janela Principal do Menu
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 460, 0, 330)
+frame.Size = UDim2.new(0, menuWidthVal, 0, menuHeightVal)
 frame.AnchorPoint = Vector2.new(0.5, 0.5)
 frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-frame.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
+frame.BackgroundColor3 = currentBgColor
+frame.BackgroundTransparency = menuTransVal
 frame.BorderSizePixel = 0
 frame.Active = true
-frame.Draggable = true
+frame.Draggable = states.menuDraggable
 frame.Visible = false
 frame.Parent = sg
+table.insert(bgElements, frame)
 
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+local frameCorner = Instance.new("UICorner", frame)
+frameCorner.CornerRadius = UDim.new(0, menuCornerVal)
+table.insert(cornerElements, frameCorner)
 
 local function toggleMenu()
     frame.Visible = not frame.Visible
@@ -107,17 +227,20 @@ end)
 -- Barra Superior (Título)
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 38)
-titleBar.BackgroundColor3 = Color3.fromRGB(80, 40, 180)
+titleBar.BackgroundColor3 = currentThemeColor
 titleBar.BorderSizePixel = 0
 titleBar.Parent = frame
+table.insert(themeElements, {obj = titleBar, type = "bg"})
 
-Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
+local titleCorner = Instance.new("UICorner", titleBar)
+titleCorner.CornerRadius = UDim.new(0, menuCornerVal)
+table.insert(cornerElements, titleCorner)
 
 local tLabel = Instance.new("TextLabel")
 tLabel.Size = UDim2.new(1, -40, 1, 0)
 tLabel.Position = UDim2.new(0, 12, 0, 0)
 tLabel.BackgroundTransparency = 1
-tLabel.Text = "Menu do Açaí [Ultimate Farm Engine]"
+tLabel.Text = "Menu do Açaí [God-Tier UI]"
 tLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 tLabel.TextSize = 14
 tLabel.Font = Enum.Font.SourceSansBold
@@ -145,6 +268,7 @@ local sidebar = Instance.new("ScrollingFrame")
 sidebar.Size = UDim2.new(0, 120, 1, -68)
 sidebar.Position = UDim2.new(0, 0, 0, 38)
 sidebar.BackgroundColor3 = Color3.fromRGB(16, 16, 24)
+sidebar.BackgroundTransparency = math.clamp(menuTransVal, 0, 0.5)
 sidebar.BorderSizePixel = 0
 sidebar.ScrollBarThickness = 2
 sidebar.Parent = frame
@@ -154,7 +278,6 @@ sidebarList.Padding = UDim.new(0, 4)
 sidebarList.SortOrder = Enum.SortOrder.LayoutOrder
 sidebarList.Parent = sidebar
 
--- Título da Aba Ativa na Direita
 local tabTitle = Instance.new("TextLabel")
 tabTitle.Size = UDim2.new(1, -135, 0, 28)
 tabTitle.Position = UDim2.new(0, 130, 0, 44)
@@ -166,7 +289,6 @@ tabTitle.Font = Enum.Font.SourceSansBold
 tabTitle.TextXAlignment = Enum.TextXAlignment.Left
 tabTitle.Parent = frame
 
--- Container Principal de Conteúdo
 local container = Instance.new("Frame")
 container.Size = UDim2.new(1, -135, 1, -85)
 container.Position = UDim2.new(0, 130, 0, 72)
@@ -212,20 +334,49 @@ local function createTab(name)
     return page
 end
 
--- Criando as Abas
 local tabPlayer   = createTab("Player")
 local tabVeiculo  = createTab("Veículo")
 local tabVisual   = createTab("Visual")
 local tabPvp      = createTab("PvP")
 local tabFarm     = createTab("Farm")
 local tabSpectate = createTab("Spectate")
+local tabMenu     = createTab("Menu")
 local tabOpcoes   = createTab("Opções")
 
 tabPlayer.Visible = true
 sidebar.CanvasSize = UDim2.new(0, 0, 0, sidebarList.AbsoluteContentSize.Y + 10)
 
--- Funções Auxiliares de UI
-local function addToggle(parentPage, nome, desc, defaultState, cb)
+local function applyThemeColor(color)
+    currentThemeColor = color
+    for _, item in ipairs(themeElements) do
+        if item.type == "bg" and item.obj and item.obj.Parent then
+            item.obj.BackgroundColor3 = color
+        elseif item.type == "toggleBg" and item.obj and item.obj.Parent and item.getStatus() then
+            item.obj.BackgroundColor3 = color
+        end
+    end
+end
+
+local function applyBgColor(color)
+    currentBgColor = color
+    for _, obj in ipairs(bgElements) do
+        if obj and obj.Parent then
+            obj.BackgroundColor3 = color
+        end
+    end
+end
+
+local function applyCornerRadius(radius)
+    menuCornerVal = radius
+    for _, c in ipairs(cornerElements) do
+        if c and c.Parent then
+            c.CornerRadius = UDim.new(0, radius)
+        end
+    end
+end
+
+local function addToggle(parentPage, stateKey, nome, desc, cb)
+    local initialVal = states[stateKey] or false
     local f = Instance.new("Frame")
     f.Size = UDim2.new(1, -5, 0, 48)
     f.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
@@ -255,14 +406,15 @@ local function addToggle(parentPage, nome, desc, defaultState, cb)
     d.TextXAlignment = Enum.TextXAlignment.Left
     d.Parent = f
 
-    local on = defaultState or false
+    local on = initialVal
 
     local bg = Instance.new("Frame")
     bg.Size = UDim2.new(0, 42, 0, 22)
     bg.Position = UDim2.new(1, -50, 0.5, -11)
-    bg.BackgroundColor3 = on and Color3.fromRGB(80, 40, 180) or Color3.fromRGB(50, 50, 70)
+    bg.BackgroundColor3 = on and currentThemeColor or Color3.fromRGB(50, 50, 70)
     bg.BorderSizePixel = 0
     bg.Parent = f
+    table.insert(themeElements, {obj = bg, type = "toggleBg", getStatus = function() return on end})
     Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
 
     local ball = Instance.new("Frame")
@@ -279,17 +431,35 @@ local function addToggle(parentPage, nome, desc, defaultState, cb)
     btn.Text = ""
     btn.Parent = f
 
-    btn.MouseButton1Click:Connect(function()
-        on = not on
+    local function updateVisual(status)
+        on = status
         TweenService:Create(bg, TweenInfo.new(0.15), {
-            BackgroundColor3 = on and Color3.fromRGB(80, 40, 180) or Color3.fromRGB(50, 50, 70)
+            BackgroundColor3 = on and currentThemeColor or Color3.fromRGB(50, 50, 70)
         }):Play()
         TweenService:Create(ball, TweenInfo.new(0.15), {
             Position = on and UDim2.new(0, 23, 0.5, -8) or UDim2.new(0, 3, 0.5, -8),
             BackgroundColor3 = on and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(160, 160, 180)
         }):Play()
+    end
+
+    btn.MouseButton1Click:Connect(function()
+        on = not on
+        states[stateKey] = on
+        updateVisual(on)
         cb(on)
+        triggerAutoSave()
     end)
+
+    if stateKey then
+        toggleCallbacks[stateKey] = updateVisual
+    end
+
+    if on then
+        task.spawn(function()
+            task.wait(0.5)
+            cb(true)
+        end)
+    end
 end
 
 local activeDrag = nil
@@ -300,7 +470,10 @@ UserInputService.InputChanged:Connect(function(inp)
 end)
 UserInputService.InputEnded:Connect(function(inp)
     if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-        activeDrag = nil
+        if activeDrag then
+            activeDrag = nil
+            triggerAutoSave()
+        end
     end
 end)
 
@@ -334,9 +507,10 @@ local function addSlider(parentPage, nome, minV, maxV, defV, cb)
     local rel0 = math.clamp((defV - minV) / (maxV - minV), 0, 1)
     local fill = Instance.new("Frame")
     fill.Size = UDim2.new(rel0, 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(80, 40, 180)
+    fill.BackgroundColor3 = currentThemeColor
     fill.BorderSizePixel = 0
     fill.Parent = track
+    table.insert(themeElements, {obj = fill, type = "bg"})
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
 
     local knob = Instance.new("Frame")
@@ -372,7 +546,6 @@ local function addSlider(parentPage, nome, minV, maxV, defV, cb)
     end)
 end
 
--- === SISTEMA DE ESP ===
 local function removeESP(p)
     if p.Character then
         local h = p.Character:FindFirstChild("AcaiHighlight")
@@ -426,7 +599,131 @@ Players.PlayerAdded:Connect(addESP)
 Players.PlayerRemoving:Connect(removeESP)
 for _, p in ipairs(Players:GetPlayers()) do addESP(p) end
 
--- === FUNÇÕES DE ALVO & BUSCA INTELIGENTE ===
+-- === LOOP LEVE PARA BOSSES E FRUTAS ===
+local notifiedBosses = {}
+local notifiedFruits = {}
+
+task.spawn(function()
+    while true do
+        task.wait(2)
+        pcall(function()
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+
+            for _, obj in ipairs(Workspace:GetChildren()) do
+                if obj:IsA("Model") and not Players:GetPlayerFromCharacter(obj) then
+                    local hum = obj:FindFirstChildOfClass("Humanoid")
+                    local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj:FindFirstChild("Head")
+                    
+                    if hum and hrp and hum.MaxHealth >= 40000 and hum.Health > 0 then
+                        if states.notifyBoss and not notifiedBosses[obj] then
+                            notifiedBosses[obj] = true
+                            sendNotification("CHEFE SPAWNADO!", "Boss: " .. obj.Name)
+                        end
+
+                        if states.espBoss then
+                            local inDist = true
+                            if states.bossDistLimit and root then
+                                if (root.Position - hrp.Position).Magnitude > bossDistVal then
+                                    inDist = false
+                                end
+                            end
+
+                            if inDist then
+                                local hl = obj:FindFirstChild("BossHighlight")
+                                if not hl then
+                                    hl = Instance.new("Highlight")
+                                    hl.Name = "BossHighlight"
+                                    hl.Adornee = obj
+                                    hl.FillColor = Color3.fromRGB(255, 0, 0)
+                                    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                                    hl.FillTransparency = 0.3
+                                    hl.Parent = obj
+
+                                    local bb = Instance.new("BillboardGui")
+                                    bb.Name = "BossTag"
+                                    bb.Size = UDim2.new(0, 150, 0, 50)
+                                    bb.StudsOffset = Vector3.new(0, 3.5, 0)
+                                    bb.AlwaysOnTop = true
+                                    bb.Adornee = hrp
+                                    bb.Parent = obj
+
+                                    local lbl = Instance.new("TextLabel")
+                                    lbl.Size = UDim2.new(1, 0, 1, 0)
+                                    lbl.BackgroundTransparency = 1
+                                    lbl.Text = "[BOSS 40k+] " .. obj.Name
+                                    lbl.TextColor3 = Color3.fromRGB(255, 60, 60)
+                                    lbl.TextSize = 13
+                                    lbl.Font = Enum.Font.SourceSansBold
+                                    lbl.TextStrokeTransparency = 0.2
+                                    lbl.Parent = bb
+                                end
+                            else
+                                local hl = obj:FindFirstChild("BossHighlight")
+                                if hl then hl:Destroy() end
+                                local tag = obj:FindFirstChild("BossTag")
+                                if tag then tag:Destroy() end
+                            end
+                        else
+                            local hl = obj:FindFirstChild("BossHighlight")
+                            if hl then hl:Destroy() end
+                            local tag = obj:FindFirstChild("BossTag")
+                            if tag then tag:Destroy() end
+                        end
+                    end
+                elseif obj:IsA("Tool") and string.find(obj.Name, "Fruit") then
+                    if states.notifyFruit and not notifiedFruits[obj] then
+                        notifiedFruits[obj] = true
+                        sendNotification("FRUTA SPAWNADA!", "Fruta: " .. obj.Name)
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+local function getLevelAppropriateMob()
+    local bestMobPart = nil
+    local shortestDist = math.huge
+    local charRef = player.Character
+    local rootRef = charRef and charRef:FindFirstChild("HumanoidRootPart")
+    if not rootRef then return nil end
+
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") and obj ~= charRef and not Players:GetPlayerFromCharacter(obj) then
+            local hum = obj:FindFirstChildOfClass("Humanoid")
+            local hrp = obj:FindFirstChild("HumanoidRootPart")
+            if hum and hrp and hum.Health > 0 then
+                local dist = (rootRef.Position - hrp.Position).Magnitude
+                if dist < shortestDist then
+                    shortestDist = dist
+                    bestMobPart = hrp
+                end
+            end
+        end
+    end
+    return bestMobPart
+end
+
+local function getClosestQuestNPC()
+    local closestNPC = nil
+    local shortestDist = math.huge
+    local charRef = player.Character
+    local rootRef = charRef and charRef:FindFirstChild("HumanoidRootPart")
+    if not rootRef then return nil end
+
+    for _, desc in ipairs(Workspace:GetDescendants()) do
+        if desc:IsA("ProximityPrompt") and desc.Parent and desc.Parent:IsA("BasePart") then
+            local dist = (rootRef.Position - desc.Parent.Position).Magnitude
+            if dist < shortestDist then
+                shortestDist = dist
+                closestNPC = desc
+            end
+        end
+    end
+    return closestNPC
+end
+
 local function getClosestPlayerHead()
     local closestTarget = nil
     local shortestDist = math.huge
@@ -449,64 +746,9 @@ local function getClosestPlayerHead()
     return closestTarget
 end
 
--- Motor Avançado de Varredura de Mobs para Auto Farm
-local function getBestMobTarget()
-    local bestMob = nil
-    local minDistance = math.huge
-    local charRef = player.Character
-    local rootRef = charRef and charRef:FindFirstChild("HumanoidRootPart")
-    
-    if not rootRef then return nil end
-
-    for _, obj in ipairs(Workspace:GetChildren()) do
-        if obj:IsA("Model") and obj ~= charRef then
-            local humanoid = obj:FindFirstChildOfClass("Humanoid")
-            local rootPart = obj:FindFirstChild("HumanoidRootPart")
-            
-            if humanoid and rootPart and humanoid.Health > 0 then
-                -- Garante que não é um jogador
-                if not Players:GetPlayerFromCharacter(obj) then
-                    local distance = (rootRef.Position - rootPart.Position).Magnitude
-                    if distance < minDistance then
-                        minDistance = distance
-                        bestMob = rootPart
-                    end
-                end
-            end
-        end
-    end
-    return bestMob
-end
-
--- Localizador de NPC de Missão (Quest Giver)
-local function getClosestQuestNPC()
-    local closestNPC = nil
-    local shortestDist = math.huge
-    local charRef = player.Character
-    local rootRef = charRef and charRef:FindFirstChild("HumanoidRootPart")
-    
-    if not rootRef then return nil end
-
-    for _, desc in ipairs(Workspace:GetDescendants()) do
-        if desc:IsA("ProximityPrompt") and desc.Parent then
-            local parentPart = desc.Parent
-            if parentPart:IsA("BasePart") then
-                local dist = (rootRef.Position - parentPart.Position).Magnitude
-                if dist < shortestDist then
-                    shortestDist = dist
-                    closestNPC = desc
-                end
-            end
-        end
-    end
-    return closestNPC
-end
-
 -- === POPULANDO AS ABAS ===
-
--- 1. Aba Player
-addToggle(tabPlayer, "Noclip", "Atravessa paredes", false, function(on) states.noclip = on end)
-addToggle(tabPlayer, "Super Pulo", "Ativa pulo alto", false, function(on)
+addToggle(tabPlayer, "noclip", "Noclip", "Atravessa paredes", function(on) states.noclip = on end)
+addToggle(tabPlayer, "superPulo", "Super Pulo", "Ativa pulo alto", function(on)
     states.superPulo = on
     local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
     if hum then hum.UseJumpPower = true hum.JumpPower = on and jumpVal or 50 end
@@ -516,17 +758,15 @@ addSlider(tabPlayer, "Força do Pulo", 50, 300, jumpVal, function(v)
     local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
     if states.superPulo and hum then hum.JumpPower = v end
 end)
-addToggle(tabPlayer, "WalkSpeed", "Aumenta a velocidade", false, function(on) states.walkSpeed = on end)
+addToggle(tabPlayer, "walkSpeed", "WalkSpeed", "Aumenta a velocidade", function(on) states.walkSpeed = on end)
 addSlider(tabPlayer, "Velocidade", 16, 300, speedVal, function(v) speedVal = v end)
-addToggle(tabPlayer, "Pulo Infinito", "Pula várias vezes no ar", false, function(on) states.infiniteJump = on end)
+addToggle(tabPlayer, "infiniteJump", "Pulo Infinito", "Pula várias vezes no ar", function(on) states.infiniteJump = on end)
 
--- 2. Aba Veículo
-addToggle(tabVeiculo, "Boat Fly", "Faz o barco voar e acelerar", false, function(on) states.boatFly = on end)
-addSlider(tabVeiculo, "Velocidade do Barco", 50, 300, 150, function(v) boatVal = v end)
-addToggle(tabVeiculo, "Impulso de Veículo", "Faz o veículo pular/destravar", false, function(on) states.vehicleBounce = on end)
+addToggle(tabVeiculo, "boatFly", "Boat Fly", "Faz o barco voar e acelerar", function(on) states.boatFly = on end)
+addSlider(tabVeiculo, "Velocidade do Barco", 50, 300, boatVal, function(v) boatVal = v end)
+addToggle(tabVeiculo, "vehicleBounce", "Impulso de Veículo", "Faz o veículo pular/destravar", function(on) states.vehicleBounce = on end)
 
--- 3. Aba Visual
-addToggle(tabVisual, "ESP Players", "Mostra jogadores nas paredes", false, function(on)
+addToggle(tabVisual, "espPlayers", "ESP Players", "Mostra jogadores nas paredes", function(on)
     states.espPlayers = on
     if on then
         for _, p in ipairs(Players:GetPlayers()) do if p ~= player and p.Character then addESP(p) end end
@@ -534,7 +774,10 @@ addToggle(tabVisual, "ESP Players", "Mostra jogadores nas paredes", false, funct
         for _, p in ipairs(Players:GetPlayers()) do removeESP(p) end
     end
 end)
-addToggle(tabVisual, "Fullbright", "Iluminação máxima", false, function(on)
+addToggle(tabVisual, "espBoss", "ESP Boss (40k+ HP)", "Destaca chefes com 40k+ de vida", function(on) states.espBoss = on end)
+addToggle(tabVisual, "bossDistLimit", "Limitar Distância ESP Boss", "Ativa limite de distância para o ESP", function(on) states.bossDistLimit = on end)
+addSlider(tabVisual, "Distância Máx Boss", 100, 5000, bossDistVal, function(v) bossDistVal = v end)
+addToggle(tabVisual, "fullbright", "Fullbright", "Iluminação máxima", function(on)
     states.fullbright = on
     if on then
         Lighting.Brightness = 5
@@ -547,11 +790,10 @@ addToggle(tabVisual, "Fullbright", "Iluminação máxima", false, function(on)
         Lighting.GlobalShadows = origShadows
     end
 end)
-addToggle(tabVisual, "Remover Fog", "Remove névoa completamente", false, function(on) states.noFog = on end)
+addToggle(tabVisual, "noFog", "Remover Fog", "Remove névoa completamente", function(on) states.noFog = on end)
 
--- 4. Aba PvP
-addToggle(tabPvp, "Aimbot", "Trava a câmera na cabeça do alvo", false, function(on) states.aimbot = on end)
-addToggle(tabPvp, "Aumentar Hitbox", "Facilita acertar inimigos", false, function(on)
+addToggle(tabPvp, "aimbot", "Aimbot", "Trava a câmera na cabeça do alvo", function(on) states.aimbot = on end)
+addToggle(tabPvp, "hitbox", "Aumentar Hitbox", "Facilita acertar inimigos", function(on)
     states.hitbox = on
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -616,32 +858,27 @@ refreshFollowList()
 Players.PlayerAdded:Connect(refreshFollowList)
 Players.PlayerRemoving:Connect(refreshFollowList)
 
--- 5. Aba Farm (Ultimate Auto Farm Engine - Multithread Avançado)
-addToggle(tabFarm, "Auto-Farm Pro", "Pega missão automaticamente e ataca os monstros", false, function(on)
+addToggle(tabFarm, "autoFarm", "Auto-Farm por Nível", "Pega missão e farma mobs adequados ao seu nível", function(on)
     states.autoFarm = on
     task.spawn(function()
         while states.autoFarm do
-            task.wait(0.15)
+            task.wait(0.3)
             pcall(function()
                 local char = player.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 local hum = char and char:FindFirstChildOfClass("Humanoid")
                 
                 if char and hrp and hum and hum.Health > 0 then
-                    -- Passo A: Interagir com missões e baús próximos automaticamente
                     local questPrompt = getClosestQuestNPC()
-                    if questPrompt and (questPrompt.Parent.Position - hrp.Position).Magnitude < 30 then
+                    if questPrompt and (questPrompt.Parent.Position - hrp.Position).Magnitude < 35 then
                         fireproximityprompt(questPrompt)
                     end
 
-                    -- Passo B: Executar ciclo de ataque e posicionamento estratégico no mob
-                    local targetMob = getBestMobTarget()
+                    local targetMob = getLevelAppropriateMob()
                     if targetMob then
-                        -- Posicionamento perfeito para ataque corpo a corpo (acima e levemente à frente)
                         hrp.CFrame = targetMob.CFrame * CFrame.new(0, 4, 2)
                         hum:MoveTo(targetMob.Position)
 
-                        -- Disparo de ataque contínuo com VirtualUser
                         VirtualUser:Button1Down(Vector2.new(0, 0), camera.CFrame)
                         task.wait(0.05)
                         VirtualUser:Button1Up(Vector2.new(0, 0), camera.CFrame)
@@ -652,7 +889,6 @@ addToggle(tabFarm, "Auto-Farm Pro", "Pega missão automaticamente e ataca os mon
     end)
 end)
 
--- 6. Aba Spectate
 local function refreshSpectateList()
     task.spawn(function()
         for _, child in ipairs(tabSpectate:GetChildren()) do
@@ -699,10 +935,213 @@ refreshSpectateList()
 Players.PlayerAdded:Connect(refreshSpectateList)
 Players.PlayerRemoving:Connect(refreshSpectateList)
 
--- 7. Aba Opções
+-- === ABA MENU (CUSTOMIZAÇÃO GOD-TIER) ===
+addToggle(tabMenu, "autoSaveUI", "Auto-Save Layout", "Salva mudanças do menu automaticamente", function(on)
+    states.autoSaveUI = on
+end)
+
+addToggle(tabMenu, "menuDraggable", "Menu Arrastável", "Permite mover a janela livremente", function(on)
+    states.menuDraggable = on
+    frame.Draggable = on
+end)
+
+addToggle(tabMenu, "showOpenButton", "Botão Flutuante (Açaí)", "Mostra ou oculta a bolinha da tela", function(on)
+    states.showOpenButton = on
+    openBtn.Visible = on
+end)
+
+local centerBtn = Instance.new("TextButton")
+centerBtn.Size = UDim2.new(1, -5, 0, 32)
+centerBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 75)
+centerBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+centerBtn.Text = "Centralizar Janela na Tela"
+centerBtn.TextSize = 11
+centerBtn.Font = Enum.Font.SourceSansBold
+centerBtn.Parent = tabMenu
+Instance.new("UICorner", centerBtn).CornerRadius = UDim.new(0, 6)
+centerBtn.MouseButton1Click:Connect(function()
+    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    openBtn.Position = UDim2.new(0.02, 0, 0.2, 0)
+    sendNotification("Menu do Açaí", "Posição centralizada!")
+end)
+
+addSlider(tabMenu, "Transparência do Fundo", 0, 80, math.floor(menuTransVal * 100), function(v)
+    menuTransVal = v / 100
+    frame.BackgroundTransparency = menuTransVal
+    sidebar.BackgroundTransparency = math.clamp(menuTransVal, 0, 0.5)
+end)
+
+addSlider(tabMenu, "Largura da Janela", 380, 650, menuWidthVal, function(v)
+    menuWidthVal = v
+    frame.Size = UDim2.new(0, menuWidthVal, 0, menuHeightVal)
+end)
+
+addSlider(tabMenu, "Altura da Janela", 260, 480, menuHeightVal, function(v)
+    menuHeightVal = v
+    frame.Size = UDim2.new(0, menuWidthVal, 0, menuHeightVal)
+end)
+
+addSlider(tabMenu, "Arredondamento Bordas", 0, 24, menuCornerVal, function(v)
+    applyCornerRadius(v)
+end)
+
+addSlider(tabMenu, "Tamanho Botão Flutuante", 32, 75, openBtnSizeVal, function(v)
+    openBtnSizeVal = v
+    openBtn.Size = UDim2.new(0, v, 0, v)
+end)
+
+-- Seção de Cor de Fundo
+local bgLabel = Instance.new("TextLabel")
+bgLabel.Size = UDim2.new(1, -5, 0, 22)
+bgLabel.BackgroundTransparency = 1
+bgLabel.Text = "--- COR DE FUNDO DO PAINEL ---"
+bgLabel.TextColor3 = Color3.fromRGB(150, 150, 180)
+bgLabel.TextSize = 11
+bgLabel.Font = Enum.Font.SourceSansBold
+bgLabel.Parent = tabMenu
+
+local bgThemes = {
+    {Name = "Escuro Padrão", Color = Color3.fromRGB(22, 22, 32)},
+    {Name = "Preto OLED Puro", Color = Color3.fromRGB(8, 8, 12)},
+    {Name = "Cinza Chumbo", Color = Color3.fromRGB(38, 38, 46)},
+    {Name = "Azul Meia-Noite", Color = Color3.fromRGB(15, 22, 38)}
+}
+
+for _, bg in ipairs(bgThemes) do
+    local bBtn = Instance.new("TextButton")
+    bBtn.Size = UDim2.new(1, -5, 0, 30)
+    bBtn.BackgroundColor3 = bg.Color
+    bBtn.TextColor3 = Color3.fromRGB(230, 230, 255)
+    bBtn.Text = "Fundo: " .. bg.Name
+    bBtn.TextSize = 11
+    bBtn.Font = Enum.Font.SourceSansBold
+    bBtn.Parent = tabMenu
+    Instance.new("UICorner", bBtn).CornerRadius = UDim.new(0, 6)
+    
+    bBtn.MouseButton1Click:Connect(function()
+        applyBgColor(bg.Color)
+        triggerAutoSave()
+    end)
+end
+
+-- Seção de Cor de Destaque (Temas)
+local themeLabel = Instance.new("TextLabel")
+themeLabel.Size = UDim2.new(1, -5, 0, 22)
+themeLabel.BackgroundTransparency = 1
+themeLabel.Text = "--- COR DE DESTAQUE (TEMA) ---"
+themeLabel.TextColor3 = Color3.fromRGB(150, 150, 180)
+themeLabel.TextSize = 11
+themeLabel.Font = Enum.Font.SourceSansBold
+themeLabel.Parent = tabMenu
+
+local themes = {
+    {Name = "Roxo Açaí", Color = Color3.fromRGB(80, 40, 180)},
+    {Name = "Azul Escuro", Color = Color3.fromRGB(30, 100, 200)},
+    {Name = "Ciano Neon", Color = Color3.fromRGB(0, 160, 180)},
+    {Name = "Verde Matrix", Color = Color3.fromRGB(40, 160, 80)},
+    {Name = "Vermelho Fogo", Color = Color3.fromRGB(180, 40, 40)},
+    {Name = "Rosa Choque", Color = Color3.fromRGB(200, 40, 120)},
+    {Name = "Dourado Luxo", Color = Color3.fromRGB(200, 150, 30)}
+}
+
+for _, t in ipairs(themes) do
+    local tBtn = Instance.new("TextButton")
+    tBtn.Size = UDim2.new(1, -5, 0, 30)
+    tBtn.BackgroundColor3 = t.Color
+    tBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tBtn.Text = "Tema: " .. t.Name
+    tBtn.TextSize = 11
+    tBtn.Font = Enum.Font.SourceSansBold
+    tBtn.Parent = tabMenu
+    Instance.new("UICorner", tBtn).CornerRadius = UDim.new(0, 6)
+    
+    tBtn.MouseButton1Click:Connect(function()
+        applyThemeColor(t.Color)
+        triggerAutoSave()
+        sendNotification("Menu do Açaí", "Tema alterado para " .. t.Name)
+    end)
+end
+
+-- === ABA OPÇÕES ===
 addSlider(tabOpcoes, "Ajustar FOV", 70, 120, math.floor(camera.FieldOfView), function(v) camera.FieldOfView = v end)
 
--- Configuração de Keybind (Tecla para Abrir/Fechar)
+addToggle(tabOpcoes, "notifyBoss", "Notificar Boss", "Avisa quando um chefe (40k+) spawna", function(on) states.notifyBoss = on end)
+addToggle(tabOpcoes, "notifyFruit", "Notificar Fruta", "Avisa quando uma fruta spawna no mapa", function(on) states.notifyFruit = on end)
+
+local saveCfgBtn = Instance.new("TextButton")
+saveCfgBtn.Size = UDim2.new(1, -5, 0, 34)
+saveCfgBtn.BackgroundColor3 = Color3.fromRGB(40, 140, 80)
+saveCfgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+saveCfgBtn.Text = "Salvar Configurações Manualmente"
+saveCfgBtn.TextSize = 11
+saveCfgBtn.Font = Enum.Font.SourceSansBold
+saveCfgBtn.Parent = tabOpcoes
+Instance.new("UICorner", saveCfgBtn).CornerRadius = UDim.new(0, 6)
+saveCfgBtn.MouseButton1Click:Connect(function() saveConfig(false) end)
+
+local loadCfgBtn = Instance.new("TextButton")
+loadCfgBtn.Size = UDim2.new(1, -5, 0, 34)
+loadCfgBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 160)
+loadCfgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+loadCfgBtn.Text = "Carregar Configurações Salvas"
+loadCfgBtn.TextSize = 11
+loadCfgBtn.Font = Enum.Font.SourceSansBold
+loadCfgBtn.Parent = tabOpcoes
+Instance.new("UICorner", loadCfgBtn).CornerRadius = UDim.new(0, 6)
+loadCfgBtn.MouseButton1Click:Connect(loadConfig)
+
+local resetCfgBtn = Instance.new("TextButton")
+resetCfgBtn.Size = UDim2.new(1, -5, 0, 34)
+resetCfgBtn.BackgroundColor3 = Color3.fromRGB(160, 80, 40)
+resetCfgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+resetCfgBtn.Text = "Apagar Save / Resetar Padrão"
+resetCfgBtn.TextSize = 11
+resetCfgBtn.Font = Enum.Font.SourceSansBold
+resetCfgBtn.Parent = tabOpcoes
+Instance.new("UICorner", resetCfgBtn).CornerRadius = UDim.new(0, 6)
+resetCfgBtn.MouseButton1Click:Connect(deleteConfig)
+
+local panicBtn = Instance.new("TextButton")
+panicBtn.Size = UDim2.new(1, -5, 0, 38)
+panicBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+panicBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+panicBtn.Text = "PANIC (Desativar Tudo)"
+panicBtn.TextSize = 12
+panicBtn.Font = Enum.Font.SourceSansBold
+panicBtn.Parent = tabOpcoes
+Instance.new("UICorner", panicBtn).CornerRadius = UDim.new(0, 6)
+
+panicBtn.MouseButton1Click:Connect(function()
+    for key, _ in pairs(states) do
+        if key ~= "notifyBoss" and key ~= "notifyFruit" and key ~= "menuDraggable" and key ~= "showOpenButton" and key ~= "autoSaveUI" then
+            states[key] = false
+        end
+    end
+    
+    for _, updateFunc in pairs(toggleCallbacks) do
+        pcall(function() updateFunc(false) end)
+    end
+    
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.WalkSpeed = 16
+        hum.JumpPower = 50
+        camera.CameraSubject = hum
+    end
+
+    for _, p in ipairs(Players:GetPlayers()) do removeESP(p) end
+    pcall(function()
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("Highlight") and (obj.Name == "BossHighlight" or obj.Name == "AcaiHighlight") then
+                obj:Destroy()
+            elseif obj:IsA("BillboardGui") and (obj.Name == "BossTag" or obj.Name == "AcaiTag") then
+                obj:Destroy()
+            end
+        end
+    end)
+end)
+
 local bindFrame = Instance.new("Frame")
 bindFrame.Size = UDim2.new(1, -5, 0, 48)
 bindFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 40)
@@ -724,12 +1163,13 @@ bindLabel.Parent = bindFrame
 local bindBtn = Instance.new("TextButton")
 bindBtn.Size = UDim2.new(0, 100, 0, 26)
 bindBtn.Position = UDim2.new(1, -110, 0.5, -13)
-bindBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 180)
+bindBtn.BackgroundColor3 = currentThemeColor
 bindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 bindBtn.Text = toggleKey.Name
 bindBtn.TextSize = 11
 bindBtn.Font = Enum.Font.SourceSansBold
 bindBtn.Parent = bindFrame
+table.insert(themeElements, {obj = bindBtn, type = "bg"})
 Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 6)
 
 local listeningForKey = false
@@ -744,25 +1184,13 @@ bindBtn.MouseButton1Click:Connect(function()
             if input.UserInputType == Enum.UserInputType.Keyboard then
                 toggleKey = input.KeyCode
                 bindBtn.Text = toggleKey.Name
-                bindBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 180)
+                bindBtn.BackgroundColor3 = currentThemeColor
                 listeningForKey = false
                 connection:Disconnect()
+                triggerAutoSave()
             end
         end)
     end
-end)
-
--- Anti-AFK
-player.Idled:Connect(function()
-    if states.antiAfk then
-        VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-    end
-end)
-
-addToggle(tabOpcoes, "Anti-AFK", "Evita timeout por inatividade", true, function(on)
-    states.antiAfk = on
 end)
 
 local soundBtn = Instance.new("TextButton")
@@ -810,7 +1238,7 @@ unloadBtn.MouseButton1Click:Connect(function()
     sg:Destroy()
 end)
 
--- === RODAPÉ DE STATUS ===
+-- Rodapé
 local footer = Instance.new("Frame")
 footer.Size = UDim2.new(1, 0, 0, 26)
 footer.Position = UDim2.new(0, 0, 1, -26)
@@ -840,7 +1268,6 @@ task.spawn(function()
     end
 end)
 
--- Loop Global Otimizado
 RunService.RenderStepped:Connect(function(dt)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -920,4 +1347,15 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
-print("Menu do Açaí [Ultimate Auto-Farm Engine] Carregado com Sucesso!")
+-- Aplica todas as configurações visuais salvas na inicialização
+applyThemeColor(currentThemeColor)
+applyBgColor(currentBgColor)
+applyCornerRadius(menuCornerVal)
+frame.Size = UDim2.new(0, menuWidthVal, 0, menuHeightVal)
+frame.BackgroundTransparency = menuTransVal
+sidebar.BackgroundTransparency = math.clamp(menuTransVal, 0, 0.5)
+frame.Draggable = states.menuDraggable
+openBtn.Visible = states.showOpenButton
+openBtn.Size = UDim2.new(0, openBtnSizeVal, 0, openBtnSizeVal)
+
+print("Menu do Açaí [God-Tier UI] Carregado com Sucesso!")
